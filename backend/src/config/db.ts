@@ -1,17 +1,19 @@
+
 import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import logger from './logger';
 
-export const connectDB = async (): Promise<void> => {
-  const mongoUri = process.env.MONGO_URI;
+dotenv.config();
 
-  if (!mongoUri) {
-    throw new Error('❌ MONGO_URI is not defined in .env');
-  }
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/';
 
+export const connectMongo = async () => {
   try {
-    await mongoose.connect(mongoUri);
-    console.log('✅ MongoDB connected successfully');
-  } catch (error) {
-    console.error('❌ MongoDB connection failed:', error);
-    throw error;
+    await mongoose.connect(MONGO_URI);
+    logger.info(`✅ Connected to MongoDB`);
+  } catch (err) {
+    logger.info('❌ Connection failed:', err);
+    throw err;
   }
 };
+

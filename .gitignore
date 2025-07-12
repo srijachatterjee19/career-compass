@@ -15,7 +15,6 @@ out/
 
 # Env
 .env
-.env.*
 
 # Logs
 logs/

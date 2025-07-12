@@ -1,22 +1,22 @@
 import dotenv from 'dotenv';
 import app from './app';
-import { connectDB } from './config/db';
+import { connectMongo } from './config/db';
+import logger from './config/logger';
 
 dotenv.config();
 
 const PORT = process.env.PORT || 5001;
 
-(async () => {
-    try {
-      await connectDB(); 
+connectMongo();
 
-      app.listen(PORT, () => {
-        console.log(`🚀 Backend running at http://localhost:${PORT}`);
-      });
-    } catch (error) {
-      console.error('❌ Failed to start server due to DB error:', error);
-      process.exit(1); // kill the process
-    }
-  })();
+const server = app.listen(PORT, () => {
+  logger.info(`🚀 Server running at http://localhost:${PORT}`);
+});
+
+server.on('error', (err) => {
+  logger.error('❌ Failed to start server:', err);
+  process.exit(1);
+});
 
 
+  

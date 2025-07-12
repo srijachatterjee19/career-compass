@@ -1,20 +1,22 @@
+version: "3.9"
+
 services:
-  # mongo:
-  #   image: mongo
-  #   ports:
-  #     - "27017:27017"
-  #   volumes:
-  #     - mongo-data:/data/db
+  mongo:
+    image: mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
 
   backend:
     build: ./backend
     ports:
       - "5001:5001"
     environment:
-      # - MONGO_URI=mongodb://mongo:27017/
+      - MONGO_URI=mongodb://mongo:27017/
       - PORT=5001
-    # depends_on:
-    #   - mongo
+    depends_on:
+      - mongo
     volumes:
       - ../backend:/app
       - /app/node_modules
@@ -31,5 +33,5 @@ services:
       - ../frontend:/app
       - /app/node_modules
 
-# volumes:
-#   mongo-data:
+volumes:
+  mongo-data:
