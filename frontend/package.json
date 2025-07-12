@@ -1,17 +1,18 @@
 {
     "name": "frontend",
     "scripts": {
-      "dev": "next dev",
-      "build": "next build",
-      "start": "next start"
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start"
     },
     "dependencies": {
-      "next": "14.0.0",
-      "react": "^18.0.0",
-      "react-dom": "^18.0.0"
+        "next": "14.0.0",
+        "react": "^18.0.0",
+        "react-dom": "^18.0.0"
     },
     "devDependencies": {
-      "typescript": "^5.0.0"
+        "@types/node": "24.0.13",
+        "@types/react": "19.1.8",
+        "typescript": "^5.0.0"
     }
-  }
-  
+}

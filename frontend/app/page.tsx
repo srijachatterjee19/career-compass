@@ -8,7 +8,7 @@ export default function Home() {
   const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/users')
+    fetch('http://localhost:5002/api/users')
       .then((res) => res.json())
       .then(setUsers);
   }, []);

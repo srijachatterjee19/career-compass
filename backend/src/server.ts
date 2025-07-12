@@ -4,12 +4,12 @@ import { connectDB } from './config/db';
 
 dotenv.config();
 
+const PORT = process.env.PORT || 5001;
+
 (async () => {
     try {
-        console.log(`test database: ${process.env.MONGO_URI}`);
-
       await connectDB(); 
-      
+
       app.listen(PORT, () => {
         console.log(`🚀 Backend running at http://localhost:${PORT}`);
       });
@@ -19,6 +19,4 @@ dotenv.config();
     }
   })();
 
-const PORT = process.env.PORT || 5001;
 
-app.listen(PORT, () => console.log(`🚀 Backend on http://localhost:${PORT}`));
