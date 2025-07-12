@@ -2,10 +2,13 @@ import dotenv from 'dotenv';
 import app from './app';
 import { connectMongo } from './config/db';
 import logger from './config/logger';
+import authRoutes from './routes/auth';
 
 dotenv.config();
 
 const PORT = process.env.PORT || 5001;
+
+app.use('/api/auth', authRoutes);
 
 connectMongo();
 

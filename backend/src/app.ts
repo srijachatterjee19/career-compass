@@ -9,32 +9,48 @@ import rateLimit from 'express-rate-limit';
 import { errorHandler } from './middleware/errorHandler';
 import cookieParser from 'cookie-parser';
 import csrf from 'csurf';
-import { login } from './controllers/authController';
+import session from 'express-session';
+import { isAuthenticated } from './middleware/isAuthenticated';
 
 const app = express();
 
 app.use(helmet());
+
+app.use(express.json());
+app.use(compression());
+app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 })); // 100 reqs per 15min
 
 app.use(cors({
   origin: 'http://localhost:3000',
   credentials: true
 }));
 
-app.use(compression());
-app.use(express.json());
-app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 100 })); // 100 reqs per 15min
+app.use(cookieParser()); //Cookie parser (needed before csrf)
 
-
-app.use(cookieParser());
-app.use(express.json());
+app.use(
+    session({
+      secret: 'your-secret-key', 
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        secure: false, // set true if using HTTPS
+        httpOnly: true,
+        sameSite: 'lax',
+        maxAge: 1000 * 60 * 60 * 24, // 1 day
+      },
+    })
+  );
 
 const csrfProtection = csrf({ cookie: true });
+
 app.use(csrfProtection);
 
-app.post('/api/login', login);
-app.use('/api/users', userRoutes);
+
+
+app.use('/api/auth', csrfRoute);
+app.use('/api/users',isAuthenticated, userRoutes);
 app.use('/', healthRoutes); 
-app.use('/api', csrfRoute);
+
 app.use(errorHandler);
 
 export default app;
