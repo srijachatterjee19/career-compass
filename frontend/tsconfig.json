@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+      "target": "es6",
+      "module": "esnext",
+      "jsx": "preserve",
+      "strict": true,
+      "baseUrl": ".",
+      "moduleResolution": "node",
+      "allowJs": true,
+      "forceConsistentCasingInFileNames": true
+    }
+  }
+  
