@@ -1,6 +1,9 @@
 up:
 	docker-compose up --build
 
+front-up:
+	docker-compose -f docker-compose-front-end.yml up --build
+
 down:
 	docker-compose down
 

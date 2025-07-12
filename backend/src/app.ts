@@ -45,8 +45,6 @@ const csrfProtection = csrf({ cookie: true });
 
 app.use(csrfProtection);
 
-
-
 app.use('/api/auth', csrfRoute);
 app.use('/api/users',isAuthenticated, userRoutes);
 app.use('/', healthRoutes); 
