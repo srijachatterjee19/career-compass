@@ -4,6 +4,7 @@ import logger from '../config/logger';
 import 'express-session';
 import { z } from 'zod';
 import csrf from 'csurf';
+import { isAuthenticated } from '../middleware/isAuthenticated';
 
 const router = express.Router();
 
@@ -96,31 +97,25 @@ router.post('/logout', async (req: Request, res: Response) => {
     if (err) return res.status(500).json({ error: 'Logout failed' });
     
     res.clearCookie('connect.sid');
-
+    res.clearCookie('token'); // Clear JWT cookie if used
     logger.info('✅ User logged out');
     res.json({ message: 'Logged out' });
 });
 
 // GET /api/auth/me - get current user
-router.get('/me', async (req: Request, res: Response) => {
- logger.info('✅ Fetching current user data');
-  if (!req.session?.userId) {
-    logger.warn('⚠️ Not logged in – no session');
-    return res.status(401).json({ error: 'Not logged in' });
-  }
+router.get('/me', isAuthenticated, async (req: Request, res: Response) => {
+    logger.info('✅ Fetching current user data');
 
-  logger.info(`✅ Fetching user data for session ID: ${req.session.userId}`);
+    const user = await User.findById((req.user as any).id).select('-password');
 
-  const user = await User.findById(req.session.userId).select('-password');
-  if (!user) {
-    logger.info(`Session ID: ${req.cookies['connect.sid']}`);
-    logger.warn(`‼️ User not found for session ID: ${req.session.userId}`);
-    return res.status(404).json({ error: 'User not found' });
-  }
-
-  res.json(user);});
+    if (!user) {
+        logger.info(`Session ID: ${req.cookies['connect.sid']}`);
+        logger.warn(`‼️ User not found for session ID: ${req.session.userId}`);
+        return res.status(404).json({ error: 'User not found' });
+      }
+  
+    res.json(user);
+  });
 });
-
-
 
 export default router;

@@ -44,7 +44,7 @@ const LoginForm = () => {
     });
 
     const data = await res.json();
-    
+
     if (data.redirect) {
       router.push(data.redirect); // Redirect to the specified URL
       return;
@@ -67,6 +67,9 @@ const LoginForm = () => {
         <input type="password" name="password" placeholder="Password" value={form.password} onChange={handleChange} required />
         <button type="submit">Login</button>
       </form>
+      <a href="http://localhost:5001/api/auth/google"><button>Login with Google</button></a>
+        <a href="http://localhost:5001/api/auth/apple"><button>Login with Apple</button></a>
+        <a href="http://localhost:5001/api/auth/microsoft"><button>Login with Microsoft</button></a>
     </div>
   );
 };
