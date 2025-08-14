@@ -5,13 +5,14 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Briefcase, FileText, Mail, CheckCircle, CalendarClock, Send, ArrowRight, Building, BarChart3, PieChartIcon } from "lucide-react";
+import { Briefcase, FileText, Mail, CheckCircle, CalendarClock, Send, ArrowRight, Building, BarChart3, PieChartIcon, Plus } from "lucide-react";
 import type { Job, JobStatus } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Bar, BarChart, Pie, PieChart as RechartsPieChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, Cell } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, type ChartConfig } from "@/components/ui/chart";
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, parseISO } from 'date-fns';
+import { useAuth } from '@/hooks/useAuth';
 
 const initialStats = [
   { title: "Jobs Tracked", value: 0, icon: Briefcase, color: "text-primary" },
@@ -20,87 +21,14 @@ const initialStats = [
   { title: "Applications Sent", value: 0, icon: CheckCircle, color: "text-yellow-500" },
 ];
 
-// This data will be processed on the client side to avoid hydration errors from new Date()
-const dashboardJobs: Job[] = [
-  { 
-    id: '1', 
-    title: 'Software Engineer', 
-    company: 'Creative Minds Inc.', 
-    status: 'Applied', 
-    applicationDate: new Date(new Date().setDate(new Date().getDate() - 65)).toISOString(), 
-    deadline: new Date(new Date().setDate(new Date().getDate() + 12)).toISOString(), 
-    url: 'https://example.com/job/',
-  },
-  { 
-    id: '2', 
-    title: 'UX Designer', 
-    company: 'Creative Minds Inc.', 
-    status: 'Saved', 
-    applicationDate: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(), 
-    deadline: new Date(new Date().setDate(new Date().getDate() + 5)).toISOString(), 
-    url: 'https://example.com/job/ux-creative',
-  },
-  { 
-    id: 'demo-job-1', 
-    title: 'Cloud Architect', 
-    company: 'AlphaDev Innovations', 
-    status: 'Applied', 
-    applicationDate: new Date(new Date().setDate(new Date().getDate() - 35)).toISOString(),
-    deadline: new Date(new Date().setDate(new Date().getDate() + 20)).toISOString(), 
-    url: 'https://example.com/job/cloud-alpha',
-  },
-   { 
-    id: '3', 
-    title: 'Data Analyst', 
-    company: 'Beta Solutions', 
-    status: 'Interviewing', 
-    applicationDate: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(),
-    deadline: new Date(new Date().setDate(new Date().getDate() + 3)).toISOString(), 
-    url: 'https://example.com/job/da-beta',
-  },
-  { 
-    id: '4', 
-    title: 'Project Manager', 
-    company: 'Gamma Corp', 
-    status: 'Offer', 
-    applicationDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString(),
-    deadline: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(), 
-    url: 'https://example.com/job/pm-gamma',
-  },
-  { 
-    id: '5', 
-    title: 'Backend Developer', 
-    company: 'Epsilon Systems', 
-    status: 'Applied', 
-    applicationDate: new Date(new Date().setDate(new Date().getDate() - 0)).toISOString(),
-    url: 'https://example.com/job/be-epsilon',
-  },
-  { 
-    id: '6', 
-    title: 'Frontend Engineer', 
-    company: 'Zeta Web', 
-    status: 'Saved', 
-    applicationDate: new Date(new Date().setDate(new Date().getDate() - 40)).toISOString(),
-    deadline: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString(), 
-    url: 'https://example.com/job/fe-zeta',
-  },
-  { 
-    id: '7', 
-    title: 'Data Scientist', 
-    company: 'Innovate AI', 
-    status: 'Applied', 
-    applicationDate: new Date(new Date().setDate(new Date().getDate() - 40)).toISOString(),
-    url: 'https://example.com/job/ds-innovate',
-  },
-  { 
-    id: '8', 
-    title: 'Marketing Manager', 
-    company: 'AdWorks', 
-    status: 'Rejected', 
-    applicationDate: new Date(new Date().setDate(new Date().getDate() - 70)).toISOString(),
-    url: 'https://example.com/job/mm-adworks',
-  }
-];
+// Job status chart configuration
+const jobStatusChartConfig = {
+  Applied: { color: 'hsl(var(--primary))', label: 'Applied' },
+  Interviewing: { color: 'hsl(var(--warning))', label: 'Interviewing' },
+  Offer: { color: 'hsl(var(--success))', label: 'Offer' },
+  Rejected: { color: 'hsl(var(--destructive))', label: 'Rejected' },
+  Saved: { color: 'hsl(var(--muted))', label: 'Saved' },
+} satisfies ChartConfig;
 
 const getLogoUrl = (companyName: string) => {
   if (!companyName || companyName.trim() === "") return null;
@@ -127,111 +55,161 @@ const DashboardJobCard: React.FC<DashboardJobCardProps> = ({ job, dateType }) =>
           </div>
           <Avatar className="h-9 w-9 border flex-shrink-0">
             <AvatarImage
-              src={getLogoUrl(job.company) || ''}
-              alt={job.company ? `${job.company} logo` : 'Company logo'}
+              src={getLogoUrl(job.company) || undefined}
+              alt={job.company}
             />
-            <AvatarFallback className="text-xs">
-              <Building className="h-4 w-4 text-muted-foreground" />
+            <AvatarFallback className="text-xs bg-muted">
+              {job.company.charAt(0).toUpperCase()}
             </AvatarFallback>
           </Avatar>
         </div>
-        {dateToShow && (
-          <p className="text-xs text-muted-foreground pt-1">
-            {dateLabel}: {new Date(dateToShow).toLocaleDateString()}
-          </p>
-        )}
+        <div className="flex items-center justify-between text-xs">
+          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+            job.status === 'Applied' ? 'bg-primary/10 text-primary' :
+            job.status === 'Interviewing' ? 'bg-warning/10 text-warning' :
+            job.status === 'Offer' ? 'bg-success/10 text-success' :
+            job.status === 'Rejected' ? 'bg-destructive/10 text-destructive' :
+            'bg-muted text-muted-foreground'
+          }`}>
+            {job.status}
+          </span>
+          {dateToShow && (
+            <span className="text-muted-foreground">
+              {dateLabel}: {format(parseISO(dateToShow), 'MMM dd')}
+            </span>
+          )}
+        </div>
       </Card>
     </Link>
   );
 };
 
-const jobStatusChartConfig = {
-  Saved: { label: "Saved", color: "hsl(var(--chart-1))" },
-  Applied: { label: "Applied", color: "hsl(var(--chart-2))" },
-  Interviewing: { label: "Interviewing", color: "hsl(var(--chart-3))" },
-  Offer: { label: "Offer", color: "hsl(var(--chart-4))" },
-  Rejected: { label: "Rejected", color: "hsl(var(--chart-5))" },
-} satisfies ChartConfig;
-
-
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const [isClient, setIsClient] = useState(false);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [resumes, setResumes] = useState<any[]>([]);
+  const [coverLetters, setCoverLetters] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Dashboard state
   const [stats, setStats] = useState(initialStats);
   const [upcomingDeadlineJobs, setUpcomingDeadlineJobs] = useState<Job[]>([]);
   const [recentlyAppliedJobs, setRecentlyAppliedJobs] = useState<Job[]>([]);
   const [monthlyStatusData, setMonthlyStatusData] = useState<any[]>([]);
   const [jobStatusDistributionData, setJobStatusDistributionData] = useState<any[]>([]);
-  const [isClient, setIsClient] = useState(false);
 
+  // Fetch real data from the database
   useEffect(() => {
-    // This logic now runs only on the client, after hydration, preventing mismatches.
-    const now = new Date();
-
-    const upcomingJobs = dashboardJobs
-      .filter(job => 
-        job.deadline && 
-        new Date(job.deadline) >= now &&
-        job.status !== 'Offer' && job.status !== 'Rejected'
-      )
-      .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime())
-      .slice(0, 3);
-
-    const recentJobs = dashboardJobs
-      .filter(job => job.status === 'Applied' && job.applicationDate)
-      .sort((a, b) => new Date(b.applicationDate!).getTime() - new Date(a.applicationDate!).getTime())
-      .slice(0, 3);
-    
-    const chartStatusKeys = Object.keys(jobStatusChartConfig) as JobStatus[];
-
-    const monthlyData = dashboardJobs
-      .filter(job => job.applicationDate)
-      .reduce((acc, job) => {
-        const monthYear = format(parseISO(job.applicationDate!), 'MMM yyyy');
-        let monthEntry = acc.find(entry => entry.month === monthYear);
-
-        if (!monthEntry) {
-          monthEntry = { month: monthYear };
-          chartStatusKeys.forEach(statusKey => {
-            monthEntry![statusKey] = 0;
-          });
-          acc.push(monthEntry);
+    const fetchData = async () => {
+      if (!user) return;
+      
+      try {
+        setLoading(true);
+        
+        // Fetch jobs
+        const jobsResponse = await fetch(`/api/jobs?userId=${user.id}`);
+        if (jobsResponse.ok) {
+          const jobsData = await jobsResponse.json();
+          setJobs(jobsData);
         }
         
-        if (job.status && chartStatusKeys.includes(job.status as JobStatus)) {
-          monthEntry![job.status as JobStatus] = (monthEntry![job.status as JobStatus] || 0) + 1;
+        // Fetch resumes
+        const resumesResponse = await fetch(`/api/resumes?userId=${user.id}`);
+        if (resumesResponse.ok) {
+          const resumesData = await resumesResponse.json();
+          setResumes(resumesData);
         }
-        return acc;
-      }, [] as Array<{ month: string; [key: string]: number | string }>)
-      .sort((a, b) => new Date(a.month as string).getTime() - new Date(b.month as string).getTime());
+        
+        // Fetch cover letters
+        const coverLettersResponse = await fetch(`/api/cover-letters?userId=${user.id}`);
+        if (coverLettersResponse.ok) {
+          const coverLettersData = await coverLettersResponse.json();
+          setCoverLetters(coverLettersData);
+        }
+        
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+        setIsClient(true);
+      }
+    };
 
-    const statusDistribution = Object.entries(
-      dashboardJobs.reduce((acc, job) => {
-        acc[job.status as JobStatus] = (acc[job.status as JobStatus] || 0) + 1;
-        return acc;
-      }, {} as Record<JobStatus, number>)
-    ).map(([name, value]) => ({
-      name: name as JobStatus,
-      value,
-      fill: jobStatusChartConfig[name as JobStatus]?.color || 'hsl(var(--muted))',
-    }));
-    
-    const trackedJobsCount = dashboardJobs.length;
-    const applicationsSentCount = dashboardJobs.filter(job => job.status === 'Applied').length;
-    
+    fetchData();
+  }, [user]);
+
+  // Process data for dashboard
+  useEffect(() => {
+    if (!isClient || loading) return;
+
+    // Update stats with real data
     const updatedStats = initialStats.map(stat => {
-        if (stat.title === "Jobs Tracked") return { ...stat, value: trackedJobsCount };
-        if (stat.title === "Applications Sent") return { ...stat, value: applicationsSentCount };
-        return stat;
+      if (stat.title === "Jobs Tracked") return { ...stat, value: jobs.length };
+      if (stat.title === "Resumes Created") return { ...stat, value: resumes.length };
+      if (stat.title === "Cover Letters") return { ...stat, value: coverLetters.length };
+      if (stat.title === "Applications Sent") return { ...stat, value: jobs.filter(job => job.status === 'Applied').length };
+      return stat;
     });
-    
-    // Update all state at once
-    setUpcomingDeadlineJobs(upcomingJobs);
-    setRecentlyAppliedJobs(recentJobs);
-    setMonthlyStatusData(monthlyData);
-    setJobStatusDistributionData(statusDistribution);
     setStats(updatedStats);
 
-    setIsClient(true);
-  }, []);
+    // Process jobs for dashboard sections
+    const jobsWithDeadlines = jobs.filter(job => job.deadline);
+    const upcomingJobs = jobsWithDeadlines
+      .filter(job => new Date(job.deadline!) > new Date())
+      .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime())
+      .slice(0, 5);
+
+    const appliedJobs = jobs.filter(job => job.status === 'Applied');
+    const recentJobs = appliedJobs
+      .filter(job => job.applicationDate)
+      .sort((a, b) => new Date(b.applicationDate!).getTime() - new Date(a.applicationDate!).getTime())
+      .slice(0, 5);
+
+    setUpcomingDeadlineJobs(upcomingJobs);
+    setRecentlyAppliedJobs(recentJobs);
+
+    // Process chart data only if there are jobs
+    if (jobs.length > 0) {
+      // Monthly status data
+      const monthlyData = jobs
+        .filter(job => job.applicationDate)
+        .reduce((acc, job) => {
+          const month = format(parseISO(job.applicationDate!), 'MMM yyyy');
+          let monthEntry = acc.find(entry => entry.month === month);
+          
+          if (!monthEntry) {
+            monthEntry = { month };
+            Object.keys(jobStatusChartConfig).forEach(status => {
+              monthEntry![status as JobStatus] = 0;
+            });
+            acc.push(monthEntry);
+          }
+          
+          monthEntry![job.status as JobStatus] = (Number(monthEntry![job.status as JobStatus]) || 0) + 1;
+          return acc;
+        }, [] as Array<{ month: string; [key: string]: number | string }>)
+        .sort((a, b) => new Date(a.month as string).getTime() - new Date(b.month as string).getTime());
+
+      // Status distribution
+      const statusDistribution = Object.entries(
+        jobs.reduce((acc, job) => {
+          acc[job.status as JobStatus] = (acc[job.status as JobStatus] || 0) + 1;
+          return acc;
+        }, {} as Record<JobStatus, number>)
+      ).map(([name, value]) => ({
+        name: name as JobStatus,
+        value,
+        fill: jobStatusChartConfig[name as JobStatus]?.color || 'hsl(var(--muted))',
+      }));
+
+      setMonthlyStatusData(monthlyData);
+      setJobStatusDistributionData(statusDistribution);
+    } else {
+      setMonthlyStatusData([]);
+      setJobStatusDistributionData([]);
+    }
+  }, [jobs, resumes, coverLetters, isClient, loading]);
 
   return (
     <div className="space-y-8">
@@ -279,7 +257,17 @@ export default function DashboardPage() {
             ) : upcomingDeadlineJobs.length > 0 ? (
               upcomingDeadlineJobs.map(job => <DashboardJobCard key={job.id} job={job} dateType="deadline" />)
             ) : (
-              <p className="text-muted-foreground text-sm">No upcoming deadlines. Add jobs to track them here!</p>
+              <div className="text-center py-8">
+                <CalendarClock className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm mb-2">No upcoming deadlines yet</p>
+                <p className="text-muted-foreground text-xs">Add jobs with deadlines to see them here</p>
+                <Button asChild variant="outline" size="sm" className="mt-3">
+                  <Link href="/jobs/add">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Job
+                  </Link>
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -305,7 +293,17 @@ export default function DashboardPage() {
             ) : recentlyAppliedJobs.length > 0 ? (
               recentlyAppliedJobs.map(job => <DashboardJobCard key={job.id} job={job} dateType="applicationDate" />)
             ) : (
-              <p className="text-muted-foreground text-sm">No recently applied jobs. Update job statuses in the tracker!</p>
+              <div className="text-center py-8">
+                <Send className="h-12 w-12 text-muted-foreground/50 mx-auto mb-3" />
+                <p className="text-muted-foreground text-sm mb-2">No applications yet</p>
+                <p className="text-muted-foreground text-xs">Track your job applications to see them here</p>
+                <Button asChild variant="outline" size="sm" className="mt-3">
+                  <Link href="/jobs/add">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add Job
+                  </Link>
+                </Button>
+              </div>
             )}
           </CardContent>
         </Card>

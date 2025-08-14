@@ -14,12 +14,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname(); // Get current pathname
 
   useEffect(() => {
+    console.log('🔍 AppLayout - User state changed:', { user, loading, pathname });
+    
     if (!loading && !user) {
+      console.log('❌ No user found, redirecting to login');
       router.replace('/login');
+    } else if (user) {
+      console.log('✅ User authenticated, allowing access to:', pathname);
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, pathname]);
 
   if (loading || (!user && typeof window !== 'undefined' && window.location.pathname !== '/login' && window.location.pathname !== '/signup' )) {
+    console.log('🔄 AppLayout - Showing loading state:', { loading, user, pathname });
     return (
       <div className="flex h-screen w-screen flex-col items-center justify-center bg-background text-foreground">
         <Icons.Spinner className="h-12 w-12 animate-spin text-primary" />

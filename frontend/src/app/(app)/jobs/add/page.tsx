@@ -16,18 +16,49 @@ import { cn } from "@/lib/utils";
 import { CalendarIcon, Save, XCircle, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '@/hooks/useAuth';
 import type { Job, JobStatus } from "@/types";
 
 const jobStatuses: JobStatus[] = ['Saved', 'Applied', 'Interviewing', 'Offer', 'Rejected'];
 
+// Status progression rules for new jobs
+const getInitialStatusOptions = (selectedStatus: JobStatus): { status: JobStatus; description: string; disabled: boolean }[] => {
+  return jobStatuses.map(status => {
+    let description = '';
+    let disabled = false;
+    
+    switch (status) {
+      case 'Saved':
+        description = 'Job saved for future application';
+        break;
+      case 'Applied':
+        description = 'Application submitted';
+        break;
+      case 'Interviewing':
+        description = 'In interview process';
+        break;
+      case 'Offer':
+        description = 'Received job offer';
+        break;
+      case 'Rejected':
+        description = 'Application rejected (final state)';
+        disabled = true; // Don't allow starting with rejected
+        break;
+    }
+    
+    return { status, description, disabled };
+  });
+};
+
 export default function AddJobPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const [title, setTitle] = useState('');
   const [company, setCompany] = useState('');
   const [url, setUrl] = useState('');
-  const [status, setStatus] = useState<JobStatus>('Saved');
+  const [status, setStatus] = useState<JobStatus>('Saved'); // Start with Saved as default
   const [applicationDate, setApplicationDate] = useState<Date | undefined>();
   const [deadline, setDeadline] = useState<Date | undefined>();
   const [notes, setNotes] = useState('');
@@ -47,26 +78,61 @@ export default function AddJobPage() {
       return;
     }
 
-    const newJob: Partial<Job> = {
-      title,
-      company,
-      url,
-      status,
-      applicationDate: applicationDate ? applicationDate.toISOString() : undefined,
-      deadline: deadline ? deadline.toISOString() : undefined,
-      notes,
-    };
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Error",
+        description: "Please log in to save jobs.",
+      });
+      setIsLoading(false);
+      return;
+    }
 
-    // Simulate API call
-    console.log("Saving new job:", newJob);
-    await new Promise(resolve => setTimeout(resolve, 700));
+    try {
+      const newJob = {
+        title,
+        company,
+        url: url || undefined,
+        status,
+        application_date: applicationDate ? applicationDate.toISOString() : undefined,
+        deadline: deadline ? deadline.toISOString() : undefined,
+        notes: notes || undefined,
+        userId: user.id, // Include user ID for the API
+      };
 
-    toast({
-      title: "Job Saved (Demo)",
-      description: `The job "${title}" at ${company} has been saved.`,
-    });
-    setIsLoading(false);
-    router.push('/jobs');
+      console.log("Saving new job:", newJob);
+      
+      const response = await fetch('/api/jobs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newJob),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save job');
+      }
+
+      const savedJob = await response.json();
+      console.log("Job saved successfully:", savedJob);
+
+      toast({
+        title: "Job Saved Successfully!",
+        description: `The job "${title}" at ${company} has been saved to your tracker.`,
+      });
+      
+      router.push('/jobs');
+    } catch (error) {
+      console.error('Error saving job:', error);
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: "Failed to save the job. Please try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -129,11 +195,28 @@ export default function AddJobPage() {
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
-                    {jobStatuses.map(s => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    {getInitialStatusOptions(status).map(({ status: statusOption, description, disabled }) => (
+                      <SelectItem 
+                        key={statusOption} 
+                        value={statusOption}
+                        disabled={disabled}
+                        className={disabled ? 'opacity-50 cursor-not-allowed' : ''}
+                      >
+                        <div>
+                          <div className="font-medium">{statusOption}</div>
+                          <div className="text-xs text-muted-foreground">{description}</div>
+                        </div>
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground">
+                  {status === 'Saved' && 'Start here to save a job for future application'}
+                  {status === 'Applied' && 'Use this when you submit your application'}
+                  {status === 'Interviewing' && 'Use this when you start the interview process'}
+                  {status === 'Offer' && 'Use this when you receive a job offer'}
+                  {status === 'Rejected' && 'This is a final state - no further changes allowed'}
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="applicationDate">Application Date</Label>

@@ -2,15 +2,16 @@
 "use client";
 
 import Link from 'next/link';
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { PlusCircle, Briefcase, Eye, ExternalLink, Building } from "lucide-react"; // Changed Edit to Eye
+import { PlusCircle, Briefcase, Eye, ExternalLink, Building, Loader2 } from "lucide-react";
 import type { Job, JobStatus } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuth } from '@/hooks/useAuth';
 
 const jobStatusesForFilter: Array<JobStatus | "All Statuses"> = ['All Statuses', 'Saved', 'Applied', 'Interviewing', 'Offer', 'Rejected'];
 
@@ -23,24 +24,42 @@ const sortOptions = [
 ];
 
 export default function JobTrackerPage() {
-  // Mock data - replace with actual data
-  const jobs: Job[] = [
-    { 
-      id: '1', 
-      title: '', 
-      company: '', 
-      status: 'Applied', 
-      applicationDate: new Date('2024-07-15').toISOString(),
-      deadline: new Date('2024-08-30').toISOString(),
-      url: 'https://example.com/',
-      notes: 'Applied through company portal.\nFollow up in a week.'
-    },
-      ];
+  const { user } = useAuth();
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<JobStatus | "All Statuses">("All Statuses");
   const [sortBy, setSortBy] = useState<string>("none");
   const [companyNameFilter, setCompanyNameFilter] = useState<string>("");
   const [jobTitleFilter, setJobTitleFilter] = useState<string>("");
+
+  // Fetch real jobs data from the database
+  useEffect(() => {
+    const fetchJobs = async () => {
+      if (!user) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const response = await fetch(`/api/jobs?userId=${user.id}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch jobs');
+        }
+        
+        const jobsData = await response.json();
+        setJobs(jobsData);
+      } catch (err) {
+        console.error('Error fetching jobs:', err);
+        setError('Failed to load jobs. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchJobs();
+  }, [user]);
 
   const filteredJobs = jobs.filter(job => {
     const statusMatch = selectedStatusFilter === "All Statuses" || job.status === selectedStatusFilter;
@@ -57,8 +76,8 @@ export default function JobTrackerPage() {
       let dateB: Date | null = null;
 
       if (currentSortBy.startsWith("appDate")) {
-        dateA = a.applicationDate ? new Date(a.applicationDate) : null;
-        dateB = b.applicationDate ? new Date(b.applicationDate) : null;
+        dateA = a.application_date ? new Date(a.application_date) : null;
+        dateB = b.application_date ? new Date(b.application_date) : null;
       } else if (currentSortBy.startsWith("deadline")) {
         dateA = a.deadline ? new Date(a.deadline) : null;
         dateB = b.deadline ? new Date(b.deadline) : null;
@@ -80,7 +99,6 @@ export default function JobTrackerPage() {
 
   const getLogoUrl = (companyName: string) => {
     if (!companyName || companyName.trim() === "") return null;
-    // Simple domain derivation (heuristic)
     const potentialDomain = companyName.trim().toLowerCase().replace(/[^a-z0-9-.]/gi, '').split(' ')[0] + ".com";
     return `https://logo.clearbit.com/${potentialDomain}`;
   }
@@ -146,7 +164,31 @@ export default function JobTrackerPage() {
         </div>
       </div>
       
-      {filteredAndSortedJobs.length === 0 ? (
+      {loading ? (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="ml-4 text-muted-foreground">Loading jobs...</p>
+        </div>
+      ) : error ? (
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="font-headline text-xl">Error</CardTitle>
+            <CardDescription>{error}</CardDescription>
+          </CardHeader>
+          <CardContent className="text-center py-12">
+            <Briefcase className="mx-auto h-16 w-16 text-muted-foreground/50 mb-4" />
+            <p className="text-muted-foreground mb-4">
+              Failed to load jobs. Please try again later.
+            </p>
+            <Button asChild variant="default">
+              <Link href="/jobs/add">
+                <PlusCircle className="mr-2 h-5 w-5" />
+                Add Job
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : filteredAndSortedJobs.length === 0 ? (
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle className="font-headline text-xl">
@@ -199,9 +241,9 @@ export default function JobTrackerPage() {
                   <span className="font-semibold">Status:</span> 
                   <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-secondary text-secondary-foreground">{job.status}</span>
                 </p>
-                {job.applicationDate && (
+                {job.application_date && (
                   <p className="text-sm">
-                    <span className="font-semibold">Applied:</span> {new Date(job.applicationDate).toLocaleDateString()}
+                    <span className="font-semibold">Applied:</span> {new Date(job.application_date).toLocaleDateString()}
                   </p>
                 )}
                 {job.deadline && (
