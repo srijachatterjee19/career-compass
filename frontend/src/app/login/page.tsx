@@ -26,9 +26,14 @@ export default function LoginPage() {
     try {
       await login(email, password);
       toast({ title: "Login Successful", description: "Welcome back!" });
-      router.push('/dashboard');
-    } catch (error) {
-      toast({ variant: "destructive", title: "Login Failed", description: "Please check your credentials and try again." });
+      
+      // Add a small delay to ensure state is updated before redirect
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 100);
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Login Failed", description: error.message || "Please check your credentials and try again." });
+    } finally {
       setIsLoading(false);
     }
   };
