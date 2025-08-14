@@ -1,31 +1,34 @@
 
 export interface User {
-  id: string;
+  id: number;
   email: string;
-  displayName?: string;
+  display_name: string;
+  role: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export type JobStatus = 'Saved' | 'Applied' | 'Interviewing' | 'Offer' | 'Rejected';
 
-export interface ChecklistItem {
-  id: string;
-  text: string;
-  isChecked: boolean;
-}
-
 export interface Job {
-  id: string;
+  id: number; // Changed to number to match database
   title: string;
   company: string;
-  url: string;
-  status: string; // Changed from JobStatus to string
-  applicationDate?: string; // ISO string
-  deadline?: string; // ISO string
+  url?: string;
+  status: string;
+  application_date?: string; // ISO string - matches database schema
+  deadline?: string; // ISO string - matches database schema
   notes?: string;
-  companyDescription?: string;
+  company_description?: string; // matches database schema
   referrals?: string;
-  checklist?: ChecklistItem[];
-  roleDetails?: string;
+  role_details?: string; // matches database schema
+  location?: string;
+  description?: string;
+  salary_min?: number;
+  salary_max?: number;
+  created_at: string;
+  updated_at: string;
+  user_id: number;
 }
 
 export interface ExperienceEntry {

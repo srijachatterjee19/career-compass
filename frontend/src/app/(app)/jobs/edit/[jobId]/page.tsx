@@ -12,14 +12,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
 import { CalendarIcon, Save, XCircle, ArrowLeft, Trash2, Building, ClipboardList, Users, Info, FileText as FileTextIcon, Briefcase as JobDetailsIcon, PlusCircle, ExternalLink, Edit3, Check } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import type { Job } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { cn } from "@/lib/utils";
 
 const baseJobStatuses: string[] = ['Saved', 'Applied', 'Interviewing', 'Offer', 'Rejected'];
 const MAX_STATUSES = 20;
@@ -54,6 +53,33 @@ const getAvailableStatuses = (currentStatus: string): string[] => {
 };
 
 const generateId = () => crypto.randomUUID();
+
+// Helper function to safely parse dates
+const safeParseDate = (dateString: string | null | undefined): Date | undefined => {
+  console.log('safeParseDate input:', dateString, typeof dateString);
+  
+  if (!dateString) {
+    console.log('No date string provided');
+    return undefined;
+  }
+  
+  try {
+    const date = new Date(dateString);
+    console.log('Parsed date:', date, 'isValid:', !isNaN(date.getTime()));
+    
+    if (!isNaN(date.getTime())) {
+      return date;
+    } else {
+      console.warn('Invalid date result:', date);
+      return undefined;
+    }
+  } catch (error) {
+    console.error('Error parsing date:', dateString, error);
+    return undefined;
+  }
+};
+
+
 
 // Real API function to get job details from database
 const getJobById = async (id: string): Promise<Job | null> => {
@@ -127,8 +153,159 @@ export default function EditJobPage() {
   const [isFetching, setIsFetching] = useState(true);
   const [activeSection, setActiveSection] = useState<string>(sectionKeys.JOB_DETAILS);
 
+  // Validation state
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
   const notesRef = useRef<HTMLTextAreaElement>(null);
 
+  // Validation functions
+  const validateField = (fieldName: string, value: any): string => {
+    switch (fieldName) {
+      case 'title':
+        if (!value || value.trim().length === 0) return 'Job title is required';
+        if (value.trim().length < 2) return 'Job title must be at least 2 characters';
+        if (value.trim().length > 100) return 'Job title must be less than 100 characters';
+        return '';
+      
+      case 'company':
+        if (!value || value.trim().length === 0) return 'Company name is required';
+        if (value.trim().length < 2) return 'Company name must be at least 2 characters';
+        if (value.trim().length > 100) return 'Company name must be less than 100 characters';
+        return '';
+      
+      case 'url':
+        if (value && value.trim().length > 0) {
+          try {
+            new URL(value);
+          } catch {
+            return 'Please enter a valid URL';
+          }
+        }
+        return '';
+      
+      case 'salary_min':
+        if (value !== undefined && value !== null && value !== '') {
+          if (isNaN(Number(value))) return 'Salary must be a valid number';
+          if (Number(value) < 0) return 'Salary cannot be negative';
+          if (Number(value) > 10000000) return 'Salary seems too high';
+        }
+        return '';
+      
+      case 'salary_max':
+        if (value !== undefined && value !== null && value !== '') {
+          if (isNaN(Number(value))) return 'Salary must be a valid number';
+          if (Number(value) < 0) return 'Salary cannot be negative';
+          if (Number(value) > 10000000) return 'Salary seems too high';
+        }
+        return '';
+      
+      case 'location':
+        if (value && value.trim().length > 200) return 'Location must be less than 200 characters';
+        return '';
+      
+      case 'description':
+        if (value && value.trim().length > 1000) return 'Description must be less than 1000 characters';
+        return '';
+      
+      case 'company_description':
+        if (value && value.trim().length > 5000) return 'Company description must be less than 5000 characters';
+        return '';
+      
+      case 'role_details':
+        if (value && value.trim().length > 10000) return 'Role details must be less than 10000 characters';
+        return '';
+      
+      case 'notes':
+        if (value && value.trim().length > 2000) return 'Notes must be less than 2000 characters';
+        return '';
+      
+      case 'referrals':
+        if (value && value.trim().length > 1000) return 'Referrals must be less than 1000 characters';
+        return '';
+      
+      default:
+        return '';
+    }
+  };
+
+  const validateSalaryRange = (min: number | undefined, max: number | undefined): string => {
+    if (min !== undefined && max !== undefined && min > max) {
+      return 'Minimum salary cannot be greater than maximum salary';
+    }
+    return '';
+  };
+
+  const validateForm = (): Record<string, string> => {
+    const newErrors: Record<string, string> = {};
+    
+    // Validate individual fields
+    newErrors.title = validateField('title', title);
+    newErrors.company = validateField('company', company);
+    newErrors.url = validateField('url', url);
+    newErrors.salary_min = validateField('salary_min', salaryMin);
+    newErrors.salary_max = validateField('salary_max', salaryMax);
+    newErrors.location = validateField('location', location);
+    newErrors.description = validateField('description', description);
+    newErrors.company_description = validateField('company_description', companyDescription);
+    newErrors.role_details = validateField('role_details', roleDetails);
+    newErrors.notes = validateField('notes', notes);
+    newErrors.referrals = validateField('referrals', referrals);
+    
+    // Validate salary range
+    const salaryRangeError = validateSalaryRange(salaryMin, salaryMax);
+    if (salaryRangeError) {
+      newErrors.salary_range = salaryRangeError;
+    }
+    
+    return newErrors;
+  };
+
+  // Helper functions for validation
+  const handleFieldChange = (fieldName: string, value: any, setter: (value: any) => void) => {
+    setter(value);
+    
+    // Clear error when user starts typing
+    if (errors[fieldName]) {
+      setErrors(prev => ({ ...prev, [fieldName]: '' }));
+    }
+  };
+
+  // Clear errors when form data changes significantly
+  useEffect(() => {
+    if (Object.keys(errors).length > 0) {
+      const newErrors = validateForm();
+      if (Object.values(newErrors).every(error => error.length === 0)) {
+        setErrors({});
+      }
+    }
+  }, [title, company, url, salaryMin, salaryMax, location, description, companyDescription, roleDetails, notes, referrals]);
+
+  const handleFieldBlur = (fieldName: string, value: any) => {
+    setTouched(prev => ({ ...prev, [fieldName]: true }));
+    
+    // Validate field on blur
+    const error = validateField(fieldName, value);
+    setErrors(prev => ({ ...prev, [fieldName]: error }));
+  };
+
+  const hasErrors = (): boolean => {
+    return Object.values(errors).some(error => error.length > 0);
+  };
+
+  // Error display component
+  const ErrorMessage = ({ fieldName }: { fieldName: string }) => {
+    const error = errors[fieldName];
+    const isTouched = touched[fieldName];
+    
+    if (!error || !isTouched) return null;
+    
+    return (
+      <p className="text-sm text-destructive mt-1">
+        {error}
+      </p>
+    );
+  };
 
   const adjustTextareaHeight = (textareaRef: React.RefObject<HTMLTextAreaElement>, maxHeight: number = 200) => {
     if (textareaRef.current) {
@@ -157,11 +334,22 @@ export default function EditJobPage() {
         setIsFetching(true);
         const jobData = await getJobById(jobId);
         if (jobData) {
+          console.log('Raw job data:', jobData);
+          console.log('Raw application_date:', jobData.application_date);
+          console.log('Raw deadline:', jobData.deadline);
+          
           setTitle(jobData.title);
           setCompany(jobData.company); 
           setUrl(jobData.url || '');
-          setApplicationDate(jobData.application_date ? new Date(jobData.application_date) : undefined);
-          setDeadline(jobData.deadline ? new Date(jobData.deadline) : undefined);
+          // Handle dates with safe parsing
+          const parsedAppDate = safeParseDate(jobData.application_date);
+          const parsedDeadline = safeParseDate(jobData.deadline);
+          
+          console.log('Parsed application date:', parsedAppDate);
+          console.log('Parsed deadline:', parsedDeadline);
+          
+          setApplicationDate(parsedAppDate);
+          setDeadline(parsedDeadline);
 
           setCurrentJobStatus(jobData.status);
           const initialStatuses = [...baseJobStatuses];
@@ -208,7 +396,16 @@ export default function EditJobPage() {
       adjustTextareaHeight(notesRef, 200);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFetching, activeSection]); 
+  }, [isFetching, activeSection]);
+
+  // Debug effect for date state changes
+  useEffect(() => {
+    console.log('Application date state changed:', applicationDate);
+  }, [applicationDate]);
+
+  useEffect(() => {
+    console.log('Deadline state changed:', deadline);
+  }, [deadline]); 
 
   const handleAddCustomStatus = () => {
     const trimmedNewStatus = newCustomStatusInput.trim();
@@ -259,6 +456,20 @@ export default function EditJobPage() {
     event.preventDefault();
     setIsLoading(true);
 
+    // Validate form before submission
+    const formErrors = validateForm();
+    setErrors(formErrors);
+
+    if (Object.values(formErrors).some(error => error.length > 0)) {
+      toast({
+        variant: "destructive",
+        title: "Validation Errors",
+        description: "Please fix the errors in the form before submitting.",
+      });
+      setIsLoading(false);
+      return;
+    }
+
     if (!title || !company) {
       toast({
         variant: "destructive",
@@ -282,12 +493,14 @@ export default function EditJobPage() {
         referrals,
         role_details: roleDetails,
         location: location || undefined,
-        salary_min: salaryMin,
-        salary_max: salaryMax,
+        salary_min: salaryMin !== undefined && salaryMin !== null ? salaryMin : undefined,
+        salary_max: salaryMax !== undefined && salaryMax !== null ? salaryMax : undefined,
         description: description || undefined,
       };
 
       console.log("Updating job:", updatedJob);
+      console.log("Application date:", applicationDate, "ISO:", applicationDate ? applicationDate.toISOString() : undefined);
+      console.log("Deadline:", deadline, "ISO:", deadline ? deadline.toISOString() : undefined);
       
       // Send the update to the API
       const response = await fetch(`/api/jobs/${jobId}`, {
@@ -308,6 +521,11 @@ export default function EditJobPage() {
         title: "Job Updated Successfully!",
         description: `The job "${title}" at ${company} has been updated.`,
       });
+      
+      // Clear validation errors on success
+      setErrors({});
+      setTouched({});
+      
       router.push('/jobs');
     } catch (error: any) {
       console.error('Error updating job:', error);
@@ -393,24 +611,30 @@ export default function EditJobPage() {
                 <Input 
                   id="title" 
                   value={title} 
-                  onChange={(e) => setTitle(e.target.value)} 
+                  onChange={(e) => handleFieldChange('title', e.target.value, setTitle)} 
+                  onBlur={(e) => handleFieldBlur('title', e.target.value)}
                   placeholder="e.g., Software Engineer" 
                   required 
                   disabled={allInputsDisabled}
                   data-testid="job-title-input"
+                  className={errors.title && touched.title ? 'border-destructive' : ''}
                 />
+                <ErrorMessage fieldName="title" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="company">Company*</Label>
                 <Input 
                   id="company" 
                   value={company} 
-                  onChange={(e) => setCompany(e.target.value)} 
+                  onChange={(e) => handleFieldChange('company', e.target.value, setCompany)} 
+                  onBlur={(e) => handleFieldBlur('company', e.target.value)}
                   placeholder="e.g., FutureTech Solutions" 
                   required 
                   disabled={allInputsDisabled}
                   data-testid="company-input"
+                  className={errors.company && touched.company ? 'border-destructive' : ''}
                 />
+                <ErrorMessage fieldName="company" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="url">Job Posting URL</Label>
@@ -419,10 +643,11 @@ export default function EditJobPage() {
                     id="url"
                     type="url"
                     value={url}
-                    onChange={(e) => setUrl(e.target.value)}
+                    onChange={(e) => handleFieldChange('url', e.target.value, setUrl)}
+                    onBlur={(e) => handleFieldBlur('url', e.target.value)}
                     placeholder="https://example.com/job/123"
                     disabled={!isEditingUrl || allInputsDisabled}
-                    className="flex-grow"
+                    className={`flex-grow ${errors.url && touched.url ? 'border-destructive' : ''}`}
                   />
                   {!isEditingUrl ? (
                     <>
@@ -460,6 +685,7 @@ export default function EditJobPage() {
                     </Button>
                   )}
                 </div>
+                <ErrorMessage fieldName="url" />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
@@ -468,10 +694,28 @@ export default function EditJobPage() {
                     <PopoverTrigger asChild>
                       <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !applicationDate && "text-muted-foreground")} disabled={allInputsDisabled}>
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {deadline ? format(deadline, "PPP") : <span>Pick a date</span>}
+                        {(() => {
+                          try {
+                            if (applicationDate && !isNaN(applicationDate.getTime())) {
+                              return format(applicationDate, "PPP");
+                            }
+                            return <span>Pick a date</span>;
+                          } catch (error) {
+                            console.error('Error formatting application date:', error);
+                            return <span>Pick a date</span>;
+                          }
+                        })()}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={applicationDate} onSelect={setApplicationDate} initialFocus disabled={allInputsDisabled} /></PopoverContent>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar 
+                        mode="single" 
+                        selected={applicationDate && !isNaN(applicationDate.getTime()) ? applicationDate : undefined} 
+                        onSelect={setApplicationDate} 
+                        initialFocus 
+                        disabled={allInputsDisabled} 
+                      />
+                    </PopoverContent>
                   </Popover>
                 </div>
                 <div className="space-y-2">
@@ -480,10 +724,28 @@ export default function EditJobPage() {
                     <PopoverTrigger asChild>
                       <Button variant={"outline"} className={cn("w-full justify-start text-left font-normal", !deadline && "text-muted-foreground")} disabled={allInputsDisabled}>
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {deadline ? format(deadline, "PPP") : <span>Pick a date</span>}
+                        {(() => {
+                          try {
+                            if (deadline && !isNaN(deadline.getTime())) {
+                              return format(deadline, "PPP");
+                            }
+                            return <span>Pick a date</span>;
+                          } catch (error) {
+                            console.error('Error formatting deadline:', error);
+                            return <span>Pick a date</span>;
+                          }
+                        })()}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={deadline} onSelect={setDeadline} initialFocus disabled={allInputsDisabled} /></PopoverContent>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar 
+                        mode="single" 
+                        selected={deadline && !isNaN(deadline.getTime()) ? deadline : undefined} 
+                        onSelect={setDeadline} 
+                        initialFocus 
+                        disabled={allInputsDisabled} 
+                      />
+                    </PopoverContent>
                   </Popover>
                 </div>
               </div>
@@ -495,11 +757,14 @@ export default function EditJobPage() {
                   <Input 
                     id="location" 
                     value={location || ''} 
-                    onChange={(e) => setLocation(e.target.value)} 
+                    onChange={(e) => handleFieldChange('location', e.target.value, setLocation)} 
+                    onBlur={(e) => handleFieldBlur('location', e.target.value)}
                     placeholder="e.g., San Francisco, CA or Remote" 
                     disabled={allInputsDisabled} 
                     data-testid="location-input"
+                    className={errors.location && touched.location ? 'border-destructive' : ''}
                   />
+                  <ErrorMessage fieldName="location" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="salaryMin">Salary Range (Min)</Label>
@@ -507,11 +772,14 @@ export default function EditJobPage() {
                     id="salaryMin" 
                     type="number" 
                     value={salaryMin || ''} 
-                    onChange={(e) => setSalaryMin(e.target.value ? parseInt(e.target.value) : undefined)} 
+                    onChange={(e) => handleFieldChange('salary_min', e.target.value ? parseInt(e.target.value) : undefined, setSalaryMin)} 
+                    onBlur={(e) => handleFieldBlur('salary_min', e.target.value ? parseInt(e.target.value) : undefined)}
                     placeholder="e.g., 80000" 
                     data-testid="salary-min-input"
                     disabled={allInputsDisabled} 
+                    className={errors.salary_min && touched.salary_min ? 'border-destructive' : ''}
                   />
+                  <ErrorMessage fieldName="salary_min" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="salaryMax">Salary Range (Max)</Label>
@@ -519,25 +787,37 @@ export default function EditJobPage() {
                     id="salaryMax" 
                     type="number" 
                     value={salaryMax || ''} 
-                    onChange={(e) => setSalaryMax(e.target.value ? parseInt(e.target.value) : undefined)} 
+                    onChange={(e) => handleFieldChange('salary_max', e.target.value ? parseInt(e.target.value) : undefined, setSalaryMax)} 
+                    onBlur={(e) => handleFieldBlur('salary_max', e.target.value ? parseInt(e.target.value) : undefined)}
                     placeholder="e.g., 120000" 
                     data-testid="salary-max-input"
                     disabled={allInputsDisabled} 
+                    className={errors.salary_max && touched.salary_max ? 'border-destructive' : ''}
                   />
+                  <ErrorMessage fieldName="salary_max" />
                 </div>
               </div>
+              {errors.salary_range && (
+                <div className="col-span-3">
+                  <p className="text-sm text-destructive mt-1">
+                    {errors.salary_range}
+                  </p>
+                </div>
+              )}
               
               <div className="space-y-2">
                 <Label htmlFor="description">Job Description</Label>
                 <Textarea 
                   id="description" 
                   value={description || ''} 
-                  onChange={(e) => setDescription(e.target.value)} 
+                  onChange={(e) => handleFieldChange('description', e.target.value, setDescription)} 
+                  onBlur={(e) => handleFieldBlur('description', e.target.value)}
                   placeholder="Brief job description or summary..." 
                   disabled={allInputsDisabled} 
-                  className="min-h-[100px]"
+                  className={`min-h-[100px] ${errors.description && touched.description ? 'border-destructive' : ''}`}
                   data-testid="job-description-input"
                 />
+                <ErrorMessage fieldName="description" />
               </div>
             </CardContent>
           </Card>
@@ -551,12 +831,14 @@ export default function EditJobPage() {
               <Textarea 
                 id="companyDescription" 
                 value={companyDescription} 
-                onChange={(e) => setCompanyDescription(e.target.value)} 
+                onChange={(e) => handleFieldChange('company_description', e.target.value, setCompanyDescription)} 
+                onBlur={(e) => handleFieldBlur('company_description', e.target.value)}
                 placeholder="What does the company do? Mission, values, etc." 
                 disabled={allInputsDisabled} 
-                className="min-h-[50vh]"
+                className={`min-h-[50vh] ${errors.company_description && touched.company_description ? 'border-destructive' : ''}`}
                 data-testid="company-description-input"
               />
+              <ErrorMessage fieldName="company_description" />
             </CardContent>
           </Card>
         );
@@ -568,11 +850,12 @@ export default function EditJobPage() {
               <Label htmlFor="roleDetails">Key Responsibilities / Skills</Label>
               <RichTextEditor
                   value={roleDetails}
-                  onChange={setRoleDetails}
+                  onChange={(value) => handleFieldChange('role_details', value, setRoleDetails)}
                   disabled={allInputsDisabled}
                   minHeight="50vh"
                   data-testid="role-details-input"
                 />
+              <ErrorMessage fieldName="role_details" />
             </CardContent>
           </Card>
         );
@@ -673,12 +956,15 @@ export default function EditJobPage() {
                   ref={notesRef} 
                   id="notes" 
                   value={notes} 
-                  onChange={(e) => setNotes(e.target.value)} 
+                  onChange={(e) => handleFieldChange('notes', e.target.value, setNotes)} 
+                  onBlur={(e) => handleFieldBlur('notes', e.target.value)}
                   placeholder="Contacts, next steps, or any other relevant info..." 
                   disabled={allInputsDisabled} 
                   style={{overflowY: 'hidden'}}
                   data-testid="notes-input"
+                  className={errors.notes && touched.notes ? 'border-destructive' : ''}
                 />
+                <ErrorMessage fieldName="notes" />
               </div>
             </CardContent>
           </Card>
@@ -692,12 +978,14 @@ export default function EditJobPage() {
               <Textarea 
                 id="referrals" 
                 value={referrals} 
-                onChange={(e) => setReferrals(e.target.value)} 
+                onChange={(e) => handleFieldChange('referrals', e.target.value, setReferrals)} 
+                onBlur={(e) => handleFieldBlur('referrals', e.target.value)}
                 placeholder="e.g., John Doe (john@example.com) - Team Lead, referred by Jane Smith" 
                 disabled={allInputsDisabled} 
-                className="min-h-[25vh]"
+                className={`min-h-[25vh] ${errors.referrals && touched.referrals ? 'border-destructive' : ''}`}
                 data-testid="referrals-input"
               />
+              <ErrorMessage fieldName="referrals" />
             </CardContent>
           </Card>
         );
@@ -733,6 +1021,22 @@ export default function EditJobPage() {
         </nav>
 
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
+          {/* Validation Summary */}
+          {Object.values(errors).some(error => error.length > 0) && (
+            <div className="mb-4 p-4 border border-destructive bg-destructive/10 rounded-lg">
+              <h3 className="font-semibold text-destructive mb-2">Please fix the following errors:</h3>
+              <ul className="list-disc list-inside space-y-1 text-sm text-destructive">
+                {Object.entries(errors).map(([field, error]) => 
+                  error && (
+                    <li key={field}>
+                      <span className="capitalize">{field.replace('_', ' ')}:</span> {error}
+                    </li>
+                  )
+                )}
+              </ul>
+            </div>
+          )}
+          
           <div className="flex-grow space-y-6 overflow-y-auto p-1 md:p-0">
             {renderSectionContent()}
           </div>
@@ -746,7 +1050,7 @@ export default function EditJobPage() {
                 <XCircle className="mr-2 h-4 w-4" />
                 Cancel
                 </Button>
-                <Button type="submit" variant="default" disabled={allInputsDisabled || !title || !company} className="flex-1 sm:flex-initial" data-testid="save-job-button">
+                <Button type="submit" variant="default" disabled={allInputsDisabled || !title || !company || hasErrors()} className="flex-1 sm:flex-initial" data-testid="save-job-button">
                 <Save className="mr-2 h-4 w-4" />
                 {isLoading ? 'Saving...' : 'Save Changes'}
                 </Button>
@@ -776,4 +1080,3 @@ function Loader2({ className }: { className?: string }) {
     </svg>
   );
 }
-
