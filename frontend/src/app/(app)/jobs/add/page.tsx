@@ -61,7 +61,7 @@ export default function AddJobPage() {
   const [status, setStatus] = useState<JobStatus>('Saved'); // Start with Saved as default
   const [applicationDate, setApplicationDate] = useState<Date | undefined>();
   const [deadline, setDeadline] = useState<Date | undefined>();
-  const [notes, setNotes] = useState('');
+  const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (event: FormEvent) => {
@@ -96,7 +96,7 @@ export default function AddJobPage() {
         status,
         application_date: applicationDate ? applicationDate.toISOString() : undefined,
         deadline: deadline ? deadline.toISOString() : undefined,
-        notes: notes || undefined,
+        description: description || undefined,
         userId: user.id, // Include user ID for the API
       };
 
@@ -273,12 +273,12 @@ export default function AddJobPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
+              <Label htmlFor="description">Job Description</Label>
               <Textarea
-                id="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Any additional notes about this job (e.g., contacts, next steps)..."
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Brief job description or summary..."
                 className="min-h-[100px]"
                 disabled={isLoading}
               />

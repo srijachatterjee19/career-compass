@@ -271,7 +271,6 @@ export default function EditJobPage() {
     }
   };
 
-  // Clear errors when form data changes significantly
   useEffect(() => {
     if (Object.keys(errors).length > 0) {
       const newErrors = validateForm();
@@ -956,15 +955,12 @@ export default function EditJobPage() {
                   ref={notesRef} 
                   id="notes" 
                   value={notes} 
-                  onChange={(e) => handleFieldChange('notes', e.target.value, setNotes)} 
-                  onBlur={(e) => handleFieldBlur('notes', e.target.value)}
+                  onChange={(e) => setNotes(e.target.value)} 
                   placeholder="Contacts, next steps, or any other relevant info..." 
                   disabled={allInputsDisabled} 
                   style={{overflowY: 'hidden'}}
                   data-testid="notes-input"
-                  className={errors.notes && touched.notes ? 'border-destructive' : ''}
                 />
-                <ErrorMessage fieldName="notes" />
               </div>
             </CardContent>
           </Card>
@@ -978,14 +974,12 @@ export default function EditJobPage() {
               <Textarea 
                 id="referrals" 
                 value={referrals} 
-                onChange={(e) => handleFieldChange('referrals', e.target.value, setReferrals)} 
-                onBlur={(e) => handleFieldBlur('referrals', e.target.value)}
+                onChange={(e) => setReferrals(e.target.value)} 
                 placeholder="e.g., John Doe (john@example.com) - Team Lead, referred by Jane Smith" 
                 disabled={allInputsDisabled} 
-                className={`min-h-[25vh] ${errors.referrals && touched.referrals ? 'border-destructive' : ''}`}
+                className="min-h-[25vh]"
                 data-testid="referrals-input"
               />
-              <ErrorMessage fieldName="referrals" />
             </CardContent>
           </Card>
         );
@@ -1021,22 +1015,6 @@ export default function EditJobPage() {
         </nav>
 
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col">
-          {/* Validation Summary */}
-          {Object.values(errors).some(error => error.length > 0) && (
-            <div className="mb-4 p-4 border border-destructive bg-destructive/10 rounded-lg">
-              <h3 className="font-semibold text-destructive mb-2">Please fix the following errors:</h3>
-              <ul className="list-disc list-inside space-y-1 text-sm text-destructive">
-                {Object.entries(errors).map(([field, error]) => 
-                  error && (
-                    <li key={field}>
-                      <span className="capitalize">{field.replace('_', ' ')}:</span> {error}
-                    </li>
-                  )
-                )}
-              </ul>
-            </div>
-          )}
-          
           <div className="flex-grow space-y-6 overflow-y-auto p-1 md:p-0">
             {renderSectionContent()}
           </div>
@@ -1050,7 +1028,7 @@ export default function EditJobPage() {
                 <XCircle className="mr-2 h-4 w-4" />
                 Cancel
                 </Button>
-                <Button type="submit" variant="default" disabled={allInputsDisabled || !title || !company || hasErrors()} className="flex-1 sm:flex-initial" data-testid="save-job-button">
+                <Button type="submit" variant="default" disabled={allInputsDisabled || !title || !company} className="flex-1 sm:flex-initial" data-testid="save-job-button">
                 <Save className="mr-2 h-4 w-4" />
                 {isLoading ? 'Saving...' : 'Save Changes'}
                 </Button>

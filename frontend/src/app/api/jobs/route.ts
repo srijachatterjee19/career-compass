@@ -13,8 +13,8 @@ const jobSchema = z.object({
   url: z.string().url().optional().or(z.literal('')).transform(val => val === '' ? undefined : val),
   application_date: z.string().datetime().optional(),
   deadline: z.string().datetime().optional(),
-  notes: z.string().optional(),
   company_description: z.string().optional(),
+  notes: z.string().optional(), // Keep for backward compatibility
   referrals: z.string().optional(),
   role_details: z.string().optional(),
 });

@@ -251,10 +251,14 @@ export default function JobTrackerPage() {
                     <span className="font-semibold">Deadline:</span> {new Date(job.deadline).toLocaleDateString()}
                   </p>
                 )}
-                {job.notes && (
+                {(job.description ) && (
                   <div className="pt-2">
-                    <p className="text-xs uppercase font-semibold text-muted-foreground">Notes:</p>
-                    <p className="text-sm text-foreground/80 whitespace-pre-wrap line-clamp-3">{job.notes}</p>
+                    <p className="text-xs uppercase font-semibold text-muted-foreground">
+                      {job.description ? 'Description:' : 'Notes:'}
+                    </p>
+                    <p className="text-sm text-foreground/80 whitespace-pre-wrap line-clamp-3">
+                      {job.description }
+                    </p>
                   </div>
                 )}
               </CardContent>
