@@ -8,12 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Save, XCircle, ArrowLeft, FileText as FileTextIcon, Sparkles, Loader2 as LoaderIcon } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
+import { Save, XCircle, ArrowLeft, FileText as FileTextIcon, Loader2 as LoaderIcon, Briefcase } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { CoverLetter } from "@/types";
-import { initialSavedCoverLetters, updateMockCoverLetter } from '@/lib/mock-data';
-import { optimizeCoverLetter, type OptimizeCoverLetterInput } from '@/ai/flows/optimize-cover-letter';
+import type { CoverLetter, Job } from "@/types";
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/hooks/useAuth';
 
 
 function Loader2({ className }: { className?: string }) {
@@ -38,20 +39,14 @@ function Loader2({ className }: { className?: string }) {
 
 interface CoverLetterFormState {
   name: string;
-  jobTitle: string;
-  companyName: string;
   content: string;
-  jobDescription: string;
-  resumeSnippet: string;
+  job_id?: number;
 }
 
 const initialFormState: CoverLetterFormState = {
   name: '',
-  jobTitle: '',
-  companyName: '',
   content: '',
-  jobDescription: '',
-  resumeSnippet: '',
+  job_id: undefined,
 };
 
 export default function EditCoverLetterPage() {
@@ -59,82 +54,85 @@ export default function EditCoverLetterPage() {
   const params = useParams();
   const letterId = params.letterId as string;
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const [formData, setFormData] = useState<CoverLetterFormState>(initialFormState);
   const [originalLetter, setOriginalLetter] = useState<CoverLetter | null>(null);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
-  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [isLoadingJobs, setIsLoadingJobs] = useState(false);
+
+  // Fetch jobs for the dropdown
+  const fetchJobs = async () => {
+    if (!user) return;
+    
+    try {
+      setIsLoadingJobs(true);
+      const response = await fetch(`/api/jobs?userId=${user.id}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch jobs');
+      }
+      
+      const jobsData = await response.json();
+      setJobs(jobsData);
+    } catch (error) {
+      console.error('Error fetching jobs:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to Load Jobs",
+        description: "Could not load jobs for the dropdown.",
+      });
+    } finally {
+      setIsLoadingJobs(false);
+    }
+  };
 
   useEffect(() => {
     if (letterId) {
       const fetchLetterData = async () => {
         setIsFetching(true);
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 300));
-        const letterData = initialSavedCoverLetters.find(cl => cl.id === letterId);
-        
-        if (letterData) {
+        try {
+          const response = await fetch(`/api/cover-letters/${letterId}`);
+          if (!response.ok) {
+            throw new Error('Failed to fetch cover letter');
+          }
+          
+          const letterData = await response.json();
+          console.log('Fetched cover letter data:', letterData);
+          
           setOriginalLetter(letterData);
           setFormData({
-            name: letterData.name,
-            jobTitle: letterData.jobTitle || '',
-            companyName: letterData.companyName || '',
-            content: letterData.content,
-            jobDescription: letterData.jobDescription || '',
-            resumeSnippet: letterData.resumeSnippet || '',
+            name: letterData.title || letterData.name || 'Untitled Cover Letter',
+            content: letterData.content || '',
+            job_id: letterData.job_id || undefined,
           });
-        } else {
+        } catch (error) {
+          console.error('Error fetching cover letter:', error);
           toast({
             variant: "destructive",
             title: "Cover Letter Not Found",
             description: "Could not find the cover letter to edit.",
           });
           router.push('/my-cover-letters');
+        } finally {
+          setIsFetching(false);
         }
-        setIsFetching(false);
       };
       fetchLetterData();
     }
   }, [letterId, router, toast]);
 
-  const handleInputChange = (field: keyof CoverLetterFormState, value: string) => {
+  // Fetch jobs when component mounts
+  useEffect(() => {
+    fetchJobs();
+  }, [user]);
+
+  const handleInputChange = (field: keyof CoverLetterFormState, value: string | number | undefined) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleOptimize = async () => {
-    if (!formData.content.trim() || !formData.jobDescription.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Missing Information",
-        description: "Cover letter content and job description are needed for AI optimization.",
-      });
-      return;
-    }
-    setIsOptimizing(true);
-    try {
-      const input: OptimizeCoverLetterInput = {
-        currentCoverLetter: formData.content,
-        jobDescription: formData.jobDescription,
-        resumeSnippet: formData.resumeSnippet || undefined,
-      };
-      const result = await optimizeCoverLetter(input);
-      setFormData(prev => ({ ...prev, content: result.optimizedCoverLetter }));
-      toast({
-        title: "Cover Letter Optimized",
-        description: "The AI has updated your cover letter content.",
-      });
-    } catch (error) {
-      console.error("Error optimizing cover letter:", error);
-      toast({
-        variant: "destructive",
-        title: "Optimization Failed",
-        description: "Could not optimize the cover letter. Please try again.",
-      });
-    } finally {
-      setIsOptimizing(false);
-    }
-  };
+
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -151,30 +149,33 @@ export default function EditCoverLetterPage() {
        return;
     }
 
-    const updatedLetterData: CoverLetter = {
-      ...originalLetter,
-      name: formData.name,
-      jobTitle: formData.jobTitle,
-      companyName: formData.companyName,
+    const updatedLetterData = {
+      title: formData.name,
       content: formData.content,
-      jobDescription: formData.jobDescription,
-      resumeSnippet: formData.resumeSnippet,
-      updatedAt: new Date().toISOString(), // This will be overwritten by mock update
+      job_id: formData.job_id,
     };
     
-    // Simulate API call for update
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const success = updateMockCoverLetter(updatedLetterData);
+    // Make real API call to update
+    const response = await fetch(`/api/cover-letters/${letterId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updatedLetterData),
+    });
 
-    if (success) {
-      toast({
-        title: "Cover Letter Updated (Demo)",
-        description: `The cover letter "${formData.name}" has been updated.`,
-      });
-      router.push('/my-cover-letters');
-    } else {
-      toast({ variant: "destructive", title: "Update Failed", description: "Could not update the cover letter in the mock data." });
+    if (!response.ok) {
+      throw new Error('Failed to update cover letter');
     }
+
+    const savedLetter = await response.json();
+    console.log("Cover letter updated successfully:", savedLetter);
+
+    toast({
+      title: "Cover Letter Updated Successfully!",
+      description: `The cover letter "${formData.name}" has been updated.`,
+    });
+    router.push('/my-cover-letters');
     setIsSaving(false);
   };
 
@@ -187,14 +188,14 @@ export default function EditCoverLetterPage() {
     );
   }
   
-  const allFieldsDisabled = isSaving || isOptimizing;
+  const allFieldsDisabled = isSaving;
 
   return (
     <div className="space-y-8">
       <Button variant="outline" size="sm" asChild className="mb-4">
         <Link href="/my-cover-letters">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to My Cover Letters
+          Back to Cover Letters
         </Link>
       </Button>
       <Card className="w-full max-w-3xl mx-auto shadow-lg">
@@ -203,7 +204,7 @@ export default function EditCoverLetterPage() {
             <FileTextIcon className="mr-3 h-7 w-7 text-accent" />
             Edit Cover Letter
           </CardTitle>
-          <CardDescription>Update the details for your cover letter below. You can also use AI to optimize the content.</CardDescription>
+          <CardDescription>Edit the name, associated job, and content of your cover letter below.</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-6">
@@ -213,33 +214,56 @@ export default function EditCoverLetterPage() {
                 id="letterName"
                 value={formData.name}
                 onChange={(e) => handleInputChange('name', e.target.value)}
-                placeholder="e.g., Software Engineer Application for Acme Corp"
+                placeholder="Enter cover letter name..."
                 required
                 disabled={allFieldsDisabled}
               />
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="jobTitle">Target Job Title</Label>
-                <Input
-                  id="jobTitle"
-                  value={formData.jobTitle}
-                  onChange={(e) => handleInputChange('jobTitle', e.target.value)}
-                  placeholder="e.g., Senior Software Engineer"
-                  disabled={allFieldsDisabled}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="companyName">Target Company Name</Label>
-                <Input
-                  id="companyName"
-                  value={formData.companyName}
-                  onChange={(e) => handleInputChange('companyName', e.target.value)}
-                  placeholder="e.g., Acme Corporation"
-                  disabled={allFieldsDisabled}
-                />
-              </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="jobSelection" className="text-base">Associated Job </Label>
+              <Select
+                value={formData.job_id?.toString() || "general"}
+                onValueChange={(value) => {
+                  if (value === "general") {
+                    handleInputChange('job_id', undefined);
+                  } else {
+                    handleInputChange('job_id', parseInt(value));
+                  }
+                }}
+                disabled={allFieldsDisabled || isLoadingJobs}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a job or General" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="general">
+                    <div className="flex items-center">
+                      <FileTextIcon className="mr-2 h-4 w-4" />
+                      General
+                    </div>
+                  </SelectItem>
+                  {jobs.length > 0 && (
+                    <>
+                      <Separator className="my-2" />
+                      <div className="px-2 py-1.5 text-sm font-medium text-muted-foreground">
+                        Saved Jobs
+                      </div>
+                      {jobs.map((job) => (
+                        <SelectItem key={job.id} value={job.id.toString()}>
+                          <div className="flex items-center">
+                            <Briefcase className="mr-2 h-4 w-4" />
+                            <div className="flex flex-col">
+                              <span className="font-medium">{job.title}</span>
+                              <span className="text-xs text-muted-foreground">{job.company}</span>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -248,54 +272,12 @@ export default function EditCoverLetterPage() {
                 id="letterContent"
                 value={formData.content}
                 onChange={(e) => handleInputChange('content', e.target.value)}
-                placeholder="Paste or write your cover letter here..."
-                className="min-h-[250px] lg:min-h-[300px]"
+                placeholder="Write your cover letter content here..."
+                className="min-h-[400px]"
                 required
                 disabled={allFieldsDisabled}
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="jobDescription" className="text-base">Target Job Description (for AI Optimization)*</Label>
-              <Textarea
-                id="jobDescription"
-                value={formData.jobDescription}
-                onChange={(e) => handleInputChange('jobDescription', e.target.value)}
-                placeholder="Paste the job description here to help the AI optimize your letter..."
-                className="min-h-[150px]"
-                required
-                disabled={allFieldsDisabled}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="resumeSnippet" className="text-base">Relevant Resume Snippet (Optional, for AI)</Label>
-              <Textarea
-                id="resumeSnippet"
-                value={formData.resumeSnippet}
-                onChange={(e) => handleInputChange('resumeSnippet', e.target.value)}
-                placeholder="Paste relevant parts of your resume for AI context..."
-                className="min-h-[100px]"
-                disabled={allFieldsDisabled}
-              />
-            </div>
-            
-            <div className="pt-2 text-center">
-              <Button 
-                type="button" 
-                variant="default"
-                onClick={handleOptimize}
-                disabled={allFieldsDisabled || !formData.content.trim() || !formData.jobDescription.trim()}
-              >
-                {isOptimizing ? (
-                  <LoaderIcon className="mr-2 h-5 w-5 animate-spin" />
-                ) : (
-                  <Sparkles className="mr-2 h-5 w-5" />
-                )}
-                Optimize Current Cover Letter with AI
-              </Button>
-            </div>
-            
           </CardContent>
           <CardFooter className="flex justify-end space-x-3 pt-6">
             <Button type="button" variant="outline" onClick={() => router.push('/my-cover-letters')} disabled={allFieldsDisabled}>

@@ -43,7 +43,7 @@ const optimizeCoverLetterPrompt = ai.definePrompt({
   model: 'googleai/gemini-2.0-flash', 
   input: {schema: OptimizeCoverLetterInputSchema},
   output: {schema: OptimizeCoverLetterOutputSchema},
-  prompt: `You are an expert cover letter editor and career coach.
+  prompt: `You are an expert cover letter editor.
 Your task is to review the DRAFT cover letter provided, along with the target job description and an optional resume snippet.
 Rewrite the DRAFT cover letter to make it more impactful, concise, persuasive, and perfectly tailored to the job description.
 Ensure professional tone and highlight how the candidate's experience (from resume snippet if provided) aligns with the job requirements.

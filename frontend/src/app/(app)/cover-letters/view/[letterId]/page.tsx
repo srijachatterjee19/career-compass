@@ -114,15 +114,19 @@ export default function ViewCoverLetterPage() {
         <CardHeader>
           <CardTitle className="font-headline text-2xl flex items-center">
             <FileTextIcon className="mr-3 h-7 w-7 text-accent" />
-            {letter.name}
+            {letter.title}
           </CardTitle>
           <CardDescription>
             {letter.jobTitle && letter.companyName && `${letter.jobTitle} at ${letter.companyName} | `}
-            Last Updated: {new Date(letter.updatedAt).toLocaleDateString()}
+            Last Updated: {new Date(letter.updated_at).toLocaleDateString()}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <SectionDisplay title="Cover Letter Content" content={letter.content} icon={FileTextIcon} isPreformatted />
+          {/* Cover Letter Content - No heading */}
+          <div className="p-4 border rounded-md bg-muted/30 min-h-[200px] text-sm whitespace-pre-wrap">
+            {letter.content}
+          </div>
+          
           <SectionDisplay title="Target Job Description" content={letter.jobDescription} icon={Briefcase} isPreformatted />
           <SectionDisplay title="Relevant Resume Snippet" content={letter.resumeSnippet} icon={StickyNote} isPreformatted />
         </CardContent>

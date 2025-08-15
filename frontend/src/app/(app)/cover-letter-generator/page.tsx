@@ -1,161 +1,290 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Sparkles, Download, Loader2, Save } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { generateCoverLetter, type GenerateCoverLetterInput } from "@/ai/flows/generate-cover-letter";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Save, XCircle, ArrowLeft, FileText as FileTextIcon, Loader2, Briefcase } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '@/hooks/useAuth';
+import type { Job } from "@/types";
+import { useEffect } from "react";
+import Link from "next/link";
 
-export default function CoverLetterGeneratorPage() {
-  const [resumeSnippet, setResumeSnippet] = useState("");
-  const [jobDescription, setJobDescription] = useState("");
-  const [generatedCoverLetter, setGeneratedCoverLetter] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+interface CoverLetterFormState {
+  title: string;
+  content: string;
+  job_id?: number;
+}
 
+const initialFormState: CoverLetterFormState = {
+  title: '',
+  content: '',
+  job_id: undefined,
+};
+
+// Default cover letter template
+const defaultCoverLetterContent = `Dear Hiring Manager,
+
+I am writing to express my strong interest in the [Position Title] position at [Company Name]. With my background in [relevant field/experience], I am confident in my ability to contribute effectively to your team and help achieve your company's goals.
+
+Throughout my career, I have developed strong skills in [key skill 1], [key skill 2], and [key skill 3]. My experience includes [brief description of relevant experience], which I believe aligns well with the requirements for this role.
+
+I am particularly drawn to [Company Name] because of [specific reason - company values, mission, projects, etc.]. I am excited about the opportunity to [specific contribution you can make] and believe my background makes me an excellent candidate for this position.
+
+I would welcome the opportunity to discuss how my skills and experience can benefit your organization. Thank you for considering my application. I look forward to hearing from you.
+
+Sincerely,
+[Your Name]
+[Your Contact Information]`;
+
+export default function CreateCoverLetterPage() {
+  const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth();
 
-  const handleGenerateCoverLetter = async () => {
-    if (!resumeSnippet.trim() || !jobDescription.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Missing Information",
-        description: "Please provide both resume snippets and the job description.",
-      });
-      return;
-    }
-    setIsGenerating(true);
-    setGeneratedCoverLetter("");
+  const [formData, setFormData] = useState<CoverLetterFormState>(initialFormState);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingJobs, setIsLoadingJobs] = useState(false);
+
+  // Initialize form with default content
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      content: defaultCoverLetterContent
+    }));
+  }, []);
+
+  // Fetch jobs for the dropdown
+  const fetchJobs = async () => {
+    if (!user) return;
+    
     try {
-      const input: GenerateCoverLetterInput = {
-        resume: resumeSnippet,
-        jobDescription: jobDescription,
-      };
-      const result = await generateCoverLetter(input);
-      setGeneratedCoverLetter(result.coverLetter);
-      toast({
-        title: "Cover Letter Generated!",
-        description: "Your AI-powered cover letter is ready. You can edit it below.",
-      });
+      setIsLoadingJobs(true);
+      const response = await fetch(`/api/jobs?userId=${user.id}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch jobs');
+      }
+      
+      const jobsData = await response.json();
+      setJobs(jobsData);
     } catch (error) {
-      console.error("Error generating cover letter:", error);
+      console.error('Error fetching jobs:', error);
       toast({
         variant: "destructive",
-        title: "Generation Failed",
-        description: "Could not generate the cover letter. Please try again.",
+        title: "Failed to Load Jobs",
+        description: "Could not load jobs for the dropdown.",
       });
     } finally {
-      setIsGenerating(false);
+      setIsLoadingJobs(false);
     }
   };
 
-  const handleSaveDraft = async () => {
-    if (!generatedCoverLetter.trim()) {
-      toast({
-        variant: "destructive",
-        title: "Empty Cover Letter",
-        description: "Nothing to save. Please generate a cover letter first.",
-      });
+  // Fetch jobs when component mounts
+  useEffect(() => {
+    fetchJobs();
+  }, [user]);
+
+  // Check for jobId query parameter to auto-link cover letter to a job
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const jobIdParam = urlParams.get('jobId');
+    
+    if (jobIdParam) {
+      const jobId = parseInt(jobIdParam);
+      if (!isNaN(jobId)) {
+        setFormData(prev => ({ ...prev, job_id: jobId }));
+        console.log('Auto-linking cover letter to job:', jobId);
+      }
+    }
+  }, []);
+
+  const handleInputChange = (field: keyof CoverLetterFormState, value: string | number | undefined) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async (event: FormEvent) => {
+    event.preventDefault();
+    setIsSaving(true);
+
+    if (!formData.title.trim()) {
+      toast({ variant: "destructive", title: "Missing Title", description: "Cover Letter Title is required." });
+      setIsSaving(false);
       return;
     }
-    setIsSaving(true);
-    // Simulate saving - in a real app, this would go to a backend or update shared state
-    // For this demo, we just show a toast. The actual list is on /my-cover-letters
-    await new Promise(resolve => setTimeout(resolve, 700));
+
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Error",
+        description: "Please log in to save cover letters.",
+      });
+      setIsSaving(false);
+      return;
+    }
     
-    toast({
-      title: "Draft Saved (Demo)",
-      description: "Your cover letter would be saved. Check 'My Cover Letters' section to manage it.",
-    });
-    // In a real app, you might do:
-    // const newLetter: CoverLetter = { id: Date.now().toString(), name: "New Draft", content: generatedCoverLetter, jobDescription, resumeSnippet, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
-    // updateMockCoverLetter(newLetter); // This would require initialSavedCoverLetters to be in a shared state/context
-    setIsSaving(false);
+    try {
+      const coverLetterData = {
+        title: formData.title,
+        content: formData.content,
+        userId: user.id,
+        job_id: formData.job_id,
+      };
+
+      const response = await fetch('/api/cover-letters', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(coverLetterData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save cover letter');
+      }
+
+      const savedCoverLetter = await response.json();
+      console.log("Cover letter saved successfully:", savedCoverLetter);
+
+      toast({
+        title: "Cover Letter Saved Successfully!",
+        description: `The cover letter "${formData.title}" has been saved.`,
+      });
+      
+      router.push('/my-cover-letters');
+    } catch (error) {
+      console.error('Error saving cover letter:', error);
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: "Could not save the cover letter. Please try again.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
+  const allFieldsDisabled = isSaving;
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="font-headline text-3xl font-semibold text-foreground">AI Cover Letter Generator</h1>
-      </div>
-
-      <Card className="shadow-lg">
+      <Button variant="outline" size="sm" asChild className="mb-4">
+        <Link href="/my-cover-letters">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to My Cover Letters
+        </Link>
+      </Button>
+      
+      <Card className="w-full max-w-3xl mx-auto shadow-lg">
         <CardHeader>
-          <CardTitle className="font-headline text-xl">Generate a Tailored Cover Letter</CardTitle>
-          <CardDescription>Provide your resume snippet and the job description to let AI craft a compelling cover letter.</CardDescription>
+          <CardTitle className="font-headline text-2xl flex items-center">
+            <FileTextIcon className="mr-3 h-7 w-7 text-accent" />
+            Create New Cover Letter
+          </CardTitle>
+          <CardDescription>Fill in the details below to create a new cover letter. You can edit the template content as needed.</CardDescription>
         </CardHeader>
+        
+        <form onSubmit={handleSubmit}>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 gap-6">
-            <div>
-              <Label htmlFor="resume-snippet" className="mb-2 block font-medium">Relevant Resume Parts</Label>
-              <Textarea 
-                id="resume-snippet" 
-                placeholder="Paste relevant parts of your resume (e.g., summary, key experiences)..." 
-                className="min-h-[150px] lg:min-h-[200px]"
-                value={resumeSnippet}
-                onChange={(e) => setResumeSnippet(e.target.value)}
-                disabled={isGenerating}
+            <div className="space-y-2">
+              <Label htmlFor="letterTitle" className="text-base">Cover Letter Title*</Label>
+              <Input
+                id="letterTitle"
+                value={formData.title}
+                onChange={(e) => handleInputChange('title', e.target.value)}
+                placeholder="Enter cover letter title..."
+                required
+                disabled={allFieldsDisabled}
               />
             </div>
-            <div>
-              <Label htmlFor="job-description-cl" className="mb-2 block font-medium">Job Description</Label>
-              <Textarea 
-                id="job-description-cl" 
-                placeholder="Paste the full job description here..." 
-                className="min-h-[150px] lg:min-h-[200px]"
-                value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
-                disabled={isGenerating}
-              />
-            </div>
-          </div>
-          
-          <div className="text-center">
-            <Button 
-              variant="default"
-              size="lg" 
-              onClick={handleGenerateCoverLetter}
-              disabled={isGenerating || !resumeSnippet.trim() || !jobDescription.trim()}
-            >
-              {isGenerating ? (
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              ) : (
-                <Sparkles className="mr-2 h-5 w-5" />
-              )}
-              Generate Cover Letter
-            </Button>
-          </div>
 
-          <div>
-            <Label htmlFor="generated-cover-letter" className="mb-2 block font-medium">Generated Cover Letter</Label>
-            <Textarea 
-              id="generated-cover-letter" 
-              placeholder="Your AI-generated cover letter will appear here. You can edit it before saving." 
-              className="min-h-[250px] lg:min-h-[300px] bg-muted/30"
-              value={generatedCoverLetter}
-              onChange={(e) => setGeneratedCoverLetter(e.target.value)}
-              disabled={isGenerating && !generatedCoverLetter}
-            />
-            <div className="mt-4 flex justify-end space-x-2">
-                <Button 
-                  variant="outline" 
-                  onClick={handleSaveDraft} 
-                  disabled={isSaving || !generatedCoverLetter.trim()}
-                >
-                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                  Save Draft (Demo)
-                </Button>
-                <Button disabled> {/* TODO: Implement PDF download for generated letter */}
-                  <Download className="mr-2 h-4 w-4" /> Download PDF
-                </Button>
+            <div className="space-y-2">
+              <Label htmlFor="jobSelection" className="text-base">Associated Job (Optional)</Label>
+              {formData.job_id && (
+                <div className="p-3 bg-primary/10 border border-primary/30 rounded-md text-sm text-primary">
+                  <div className="flex items-center space-x-2">
+                    <Briefcase className="h-4 w-4" />
+                    <span className="font-medium">Auto-linked to job #{formData.job_id}</span>
+                  </div>
+                  <p className="text-primary/80 mt-1">This cover letter will be automatically associated with the selected job.</p>
+                </div>
+              )}
+              <Select
+                value={formData.job_id?.toString() || "general"}
+                onValueChange={(value) => {
+                  if (value === "general") {
+                    handleInputChange('job_id', undefined);
+                  } else {
+                    handleInputChange('job_id', parseInt(value));
+                  }
+                }}
+                disabled={allFieldsDisabled || isLoadingJobs}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a job or General" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="general">
+                    <div className="flex items-center">
+                      <FileTextIcon className="mr-2 h-4 w-4" />
+                      General
+                    </div>
+                  </SelectItem>
+                  {jobs.length > 0 && (
+                    <>
+                      <Separator className="my-2" />
+                      <div className="px-2 py-1.5 text-sm font-medium text-muted-foreground">
+                        Saved Jobs
+                      </div>
+                      {jobs.map((job) => (
+                        <SelectItem key={job.id} value={job.id.toString()}>
+                          <div className="flex items-center">
+                            <Briefcase className="mr-2 h-4 w-4" />
+                            <div className="flex flex-col">
+                              <span className="font-medium">{job.title}</span>
+                              <span className="text-xs text-muted-foreground">{job.company}</span>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
             </div>
-          </div>
-        </CardContent>
+            
+            <div className="space-y-2">
+              <Label htmlFor="letterContent" className="text-base">Cover Letter Content*</Label>
+              <Textarea 
+                id="letterContent"
+                value={formData.content}
+                onChange={(e) => handleInputChange('content', e.target.value)}
+                placeholder="Write your cover letter content here..."
+                className="min-h-[400px]"
+                required
+                disabled={allFieldsDisabled}
+              />
+            </div>
+          </CardContent>
+          
+          <CardFooter className="flex justify-end space-x-3 pt-6">
+            <Button type="button" variant="outline" onClick={() => router.push('/my-cover-letters')} disabled={allFieldsDisabled}>
+              <XCircle className="mr-2 h-4 w-4" />
+              Cancel
+            </Button>
+            <Button type="submit" disabled={allFieldsDisabled || !formData.title} className="bg-primary text-primary-foreground hover:bg-primary/90">
+              <Save className="mr-2 h-4 w-4" />
+              {isSaving ? 'Saving...' : 'Save Cover Letter'}
+                </Button>
+          </CardFooter>
+        </form>
       </Card>
     </div>
   );
