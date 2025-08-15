@@ -66,7 +66,7 @@ export default function AppHeader() {
                 size="sm"
                 className={cn(
                   "font-medium px-2 lg:px-3",
-                  isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+                  isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-white dark:hover:bg-accent'
                 )}
                 asChild
               >
@@ -86,7 +86,7 @@ export default function AppHeader() {
         <div className="md:hidden">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon">
+              <Button variant="ghost" size="icon" className="hover:bg-white dark:hover:bg-accent">
                 <Menu className="h-6 w-6" />
                 <span className="sr-only">Open navigation menu</span>
               </Button>
@@ -96,7 +96,9 @@ export default function AppHeader() {
                 const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
                 return (
                   <DropdownMenuItem key={`mobile-nav-${item.label}`} asChild>
-                    <Link href={item.href} className={cn(isActive ? 'font-semibold text-primary bg-accent/10' : '')} onClick={() => console.log(`Mobile navigating to: ${item.href}`)}>
+                    <Link href={item.href} className={cn(
+                      isActive ? 'font-semibold text-primary bg-accent/10' : 'hover:bg-white dark:hover:bg-accent'
+                    )} onClick={() => console.log(`Mobile navigating to: ${item.href}`)}>
                       <item.icon className="mr-2 h-4 w-4" />
                       {item.label}
                     </Link>
@@ -113,7 +115,7 @@ export default function AppHeader() {
         ) : user ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-white dark:hover:bg-accent">
                 <Avatar className="h-9 w-9">
                   <AvatarImage src={`https://placehold.co/100x100.png?text=${getInitials(user.email)}`} alt={user.email || 'User'} data-ai-hint="user avatar" />
                   <AvatarFallback>{getInitials(user.email)}</AvatarFallback>
@@ -140,7 +142,7 @@ export default function AppHeader() {
                 <span>Settings</span>
               </DropdownMenuItem> */}
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout}>
+              <DropdownMenuItem onClick={handleLogout} className="hover:bg-white dark:hover:bg-accent">
                 <LogOut className="mr-2 h-4 w-4" />
                 <span>Log out</span>
               </DropdownMenuItem>

@@ -30,6 +30,11 @@ export default function MyCoverLettersPage() {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
+  // Handle create new cover letter
+  const handleCreateNew = () => {
+    window.location.href = '/cover-letter-generator';
+  };
+
   // Helper function to safely format dates
   const formatDate = (dateValue: any): string => {
     if (!dateValue) return 'N/A';
@@ -213,128 +218,133 @@ export default function MyCoverLettersPage() {
 
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h1 className="font-headline text-3xl font-semibold text-foreground">Cover Letters</h1>
-        <Button asChild>
-          <Link href="/cover-letter-generator">
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-4xl font-bold text-foreground">Cover Letters</h1>
+          <Button
+            onClick={handleCreateNew}
+            className="bg-primary text-primary-foreground hover:bg-primary/90"
+          >
             <PlusCircle className="mr-2 h-5 w-5" />
             Create New Cover Letter
-          </Link>
-        </Button>
-      </div>
+          </Button>
+        </div>
 
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="font-headline text-xl">Saved Cover Letters</CardTitle>
-          <CardDescription>Manage your saved cover letters. You can edit, download, or delete them.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-12">
-              <Loader2 className="mx-auto h-16 w-16 text-muted-foreground/50 mb-4" />
-              <p className="text-muted-foreground mb-4">Loading your cover letters...</p>
-            </div>
-          ) : error ? (
-            <div className="text-center py-12 text-red-500">
-              <p>{error}</p>
-            </div>
-          ) : coverLetters.length === 0 ? (
-            <div className="text-center py-12">
-              <MailCheck className="mx-auto h-16 w-16 text-muted-foreground/50 mb-4" />
-              <p className="text-muted-foreground mb-4">You haven't saved any cover letters yet.</p>
-              <Button asChild variant="default">
-                <Link href="/cover-letter-generator">
+        <Card className="shadow-lg bg-card border-border">
+          <CardHeader>
+            <CardTitle className="font-headline text-xl text-foreground">Saved Cover Letters</CardTitle>
+            <p className="text-muted-foreground mb-4">Manage your saved cover letters. You can view, edit, or delete them.</p>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="text-center py-12">
+                <Loader2 className="mx-auto h-16 w-16 text-primary animate-spin" />
+                <p className="text-muted-foreground mb-4">Loading your cover letters...</p>
+              </div>
+            ) : error ? (
+              <div className="text-center py-12 text-destructive">
+                <p>{error}</p>
+                <Button onClick={() => window.location.reload()} className="mt-4">
+                  Retry
+                </Button>
+              </div>
+            ) : coverLetters.length === 0 ? (
+              <div className="text-center py-12">
+                <MailCheck className="mx-auto h-16 w-16 text-muted-foreground/50 mb-4" />
+                <p className="text-muted-foreground mb-4">You haven't saved any cover letters yet.</p>
+                <Button onClick={handleCreateNew} variant="default" className="bg-primary text-primary-foreground hover:bg-primary/90">
                   <PlusCircle className="mr-2 h-5 w-5" />
                   Create Your First Cover Letter
-                </Link>
-              </Button>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[30%]">Cover Letter Name</TableHead>
-                  <TableHead className="w-[40%]">Associated Job</TableHead>
-                  <TableHead>Last Modified</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {coverLetters.map((letter) => (
-                  <TableRow key={letter.id}>
-                    <TableCell className="font-medium">
-                      {letter.title || 'Untitled'}
-                    </TableCell>
-                    <TableCell>
-                      {(letter as any).job ? (
-                        <div className="flex items-center space-x-2">
-                          <Briefcase className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <div className="font-medium">{(letter as any).job.title}</div>
-                            <div className="text-sm text-muted-foreground">{(letter as any).job.company}</div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center space-x-2 text-muted-foreground">
-                          <FileTextIcon className="h-4 w-4" />
-                          <span>General</span>
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {formatDate(letter.updated_at || letter.created_at)}
-                    </TableCell>
-                    <TableCell className="text-right space-x-1 sm:space-x-2">
-                      <Button variant="outline" size="sm" asChild>
-                         <Link href={`/cover-letters/edit/${letter.id}`}>
-                          <Edit className="mr-1 h-4 w-4" />
-                          Edit
-                        </Link>
-                      </Button>
-                       <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => handleDownloadPdf(letter)}
-                          disabled={!letter.content}
-                        >
-                        <Download className="mr-1 h-4 w-4" />
-                        PDF
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="destructive" size="sm">
-                            <Trash2 className="mr-1 h-4 w-4" />
-                            Delete
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                                          This action cannot be undone. This will permanently delete the cover letter
-                            "{letter.title}" from the database.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDeleteCoverLetter(letter.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </TableCell>
+                </Button>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="w-[30%] text-foreground">Cover Letter Name</TableHead>
+                    <TableHead className="w-[40%] text-foreground">Associated Job</TableHead>
+                    <TableHead className="text-foreground">Last Modified</TableHead>
+                    <TableHead className="text-right text-foreground">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                </TableHeader>
+                <TableBody>
+                  {coverLetters.map((letter) => (
+                    <TableRow key={letter.id} className="hover:bg-muted/50">
+                      <TableCell className="font-medium text-foreground">
+                        {letter.title || 'Untitled'}
+                      </TableCell>
+                      <TableCell>
+                        {(letter as any).job ? (
+                          <div className="flex items-center space-x-2">
+                            <Briefcase className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <div className="font-medium text-foreground">{(letter as any).job.title}</div>
+                              <div className="text-sm text-muted-foreground">{(letter as any).job.company}</div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center space-x-2 text-muted-foreground">
+                            <FileTextIcon className="h-4 w-4" />
+                            <span>General</span>
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(letter.updated_at || letter.created_at)}
+                      </TableCell>
+                      <TableCell className="text-right space-x-1 sm:space-x-2">
+                        <Button variant="outline" size="sm" asChild className="border-border text-foreground hover:bg-accent hover:text-accent-foreground">
+                           <Link href={`/cover-letters/edit/${letter.id}`}>
+                            <Edit className="mr-1 h-4 w-4" />
+                            Edit
+                          </Link>
+                        </Button>
+                         <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleDownloadPdf(letter)}
+                            disabled={!letter.content}
+                            className="border-border text-foreground hover:bg-accent hover:text-accent-foreground"
+                          >
+                          <Download className="mr-1 h-4 w-4" />
+                          PDF
+                        </Button>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm" className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                              <Trash2 className="mr-1 h-4 w-4" />
+                              Delete
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                                            This action cannot be undone. This will permanently delete the cover letter
+                              "{letter.title}" from the database.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteCoverLetter(letter.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
