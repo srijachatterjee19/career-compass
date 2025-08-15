@@ -18,8 +18,8 @@ export interface Job {
   status: string;
   application_date?: string; // ISO string - matches database schema
   deadline?: string; // ISO string - matches database schema
-  notes?: string;
   company_description?: string; // matches database schema
+  notes?: string; 
   referrals?: string;
   role_details?: string; // matches database schema
   location?: string;
@@ -67,18 +67,20 @@ export interface Resume {
   skills: TextEntry[];
   projects: ProjectEntry[];
   achievements: TextEntry[];
-  createdAt: string; // ISO string
-  updatedAt: string; // ISO string
+  job_id?: number; // Optional association with a specific job
+  created_at: string; // ISO string - matches Prisma schema
+  updated_at: string; // ISO string - matches Prisma schema
 }
 
 export interface CoverLetter {
   id: string;
-  name: string;
+  title: string; // Changed from 'name' to 'title' to match database schema
   jobTitle?: string;
   companyName?: string;
   content: string;
   jobDescription?: string;
   resumeSnippet?: string;
-  createdAt: string; // ISO string
-  updatedAt: string; // ISO string
+  job_id?: number; // Optional association with a specific job
+  created_at: string; // ISO string - matches Prisma schema
+  updated_at: string; // ISO string - matches Prisma schema
 }

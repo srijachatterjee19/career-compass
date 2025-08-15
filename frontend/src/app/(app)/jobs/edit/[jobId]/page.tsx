@@ -12,16 +12,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, Save, XCircle, ArrowLeft, Trash2, Building, ClipboardList, Users, Info, FileText as FileTextIcon, Briefcase as JobDetailsIcon, PlusCircle, ExternalLink, Edit3, Check } from "lucide-react";
+import { CalendarIcon, Save, XCircle, ArrowLeft, Trash2, Building, ClipboardList, Users, Info, FileText as FileTextIcon, Briefcase as JobDetailsIcon, PlusCircle, ExternalLink, Edit3, Check, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '@/hooks/useAuth';
 import type { Job } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { cn } from "@/lib/utils";
 
 const baseJobStatuses: string[] = ['Saved', 'Applied', 'Interviewing', 'Offer', 'Rejected'];
-const MAX_STATUSES = 20;
 
 // Status progression rules - defines which statuses are available based on current status
 const getAvailableStatuses = (currentStatus: string): string[] => {
@@ -109,6 +108,7 @@ const sectionKeys = {
   ROLE_SPECIFICS: 'roleSpecifics',
   APPLICATION_TRACKING: 'applicationTracking',
   REFERRALS: 'referrals',
+  ASSOCIATED_DOCUMENTS: 'associatedDocuments',
 };
 
 const sections = [
@@ -117,6 +117,7 @@ const sections = [
   { id: sectionKeys.ROLE_SPECIFICS, label: 'Role Specifics', icon: FileTextIcon },
   { id: sectionKeys.APPLICATION_TRACKING, label: 'Application Tracking', icon: Info },
   { id: sectionKeys.REFERRALS, label: 'Referrals', icon: Users },
+  { id: sectionKeys.ASSOCIATED_DOCUMENTS, label: 'Associated Documents', icon: FileTextIcon },
 ];
 
 
@@ -125,6 +126,7 @@ export default function EditJobPage() {
   const params = useParams();
   const jobId = params.jobId as string;
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Core job details
   const [title, setTitle] = useState('');
@@ -137,8 +139,7 @@ export default function EditJobPage() {
 
   // Fields for sidebar sections
   const [currentJobStatus, setCurrentJobStatus] = useState<string>('');
-  const [displayedStatuses, setDisplayedStatuses] = useState<string[]>([...baseJobStatuses]);
-  const [newCustomStatusInput, setNewCustomStatusInput] = useState('');
+  const [originalDatabaseStatus, setOriginalDatabaseStatus] = useState<string>('');
 
   const [notes, setNotes] = useState('');
   const [companyDescription, setCompanyDescription] = useState('');
@@ -152,6 +153,11 @@ export default function EditJobPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
   const [activeSection, setActiveSection] = useState<string>(sectionKeys.JOB_DETAILS);
+  
+  // Associated documents state
+  const [associatedResumes, setAssociatedResumes] = useState<any[]>([]);
+  const [associatedCoverLetters, setAssociatedCoverLetters] = useState<any[]>([]);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
 
   // Validation state
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -205,7 +211,7 @@ export default function EditJobPage() {
         return '';
       
       case 'description':
-        if (value && value.trim().length > 1000) return 'Description must be less than 1000 characters';
+        if (value && value.trim().length > 5000) return 'Description must be less than 5000 characters';
         return '';
       
       case 'company_description':
@@ -351,11 +357,13 @@ export default function EditJobPage() {
           setDeadline(parsedDeadline);
 
           setCurrentJobStatus(jobData.status);
+          setOriginalDatabaseStatus(jobData.status); // Store original status
           const initialStatuses = [...baseJobStatuses];
           if (jobData.status && !initialStatuses.some(s => s.toLowerCase() === jobData.status.toLowerCase())) {
             initialStatuses.push(jobData.status);
           }
-          setDisplayedStatuses(initialStatuses.slice(0, MAX_STATUSES));
+          // setDisplayedStatuses(initialStatuses.slice(0, MAX_STATUSES)); // Removed as per edit hint
+          // setNewCustomStatusInput(''); // Removed as per edit hint
 
           setNotes(jobData.notes || '');
           setCompanyDescription(jobData.company_description || '');
@@ -404,51 +412,41 @@ export default function EditJobPage() {
 
   useEffect(() => {
     console.log('Deadline state changed:', deadline);
-  }, [deadline]); 
+  }, [deadline]);
 
-  const handleAddCustomStatus = () => {
-    const trimmedNewStatus = newCustomStatusInput.trim();
-    if (!trimmedNewStatus) {
-      toast({ variant: "destructive", title: "Invalid Input", description: "Status name cannot be empty." });
-      return;
+  // Fetch associated documents when job data is loaded
+  useEffect(() => {
+    if (jobId && !isFetching) {
+      const fetchAssociatedDocuments = async () => {
+        setIsLoadingDocuments(true);
+        try {
+          // Fetch associated resumes
+          const resumesResponse = await fetch(`/api/resumes?userId=${user?.id}`);
+          if (resumesResponse.ok) {
+            const resumesData = await resumesResponse.json();
+            const jobResumes = resumesData.filter((resume: any) => resume.job_id === parseInt(jobId));
+            setAssociatedResumes(jobResumes);
+          }
+          
+          // Fetch associated cover letters
+          const coverLettersResponse = await fetch(`/api/cover-letters?userId=${user?.id}`);
+          if (coverLettersResponse.ok) {
+            const coverLettersData = await coverLettersResponse.json();
+            const jobCoverLetters = coverLettersData.filter((letter: any) => letter.job_id === parseInt(jobId));
+            setAssociatedCoverLetters(jobCoverLetters);
+          }
+        } catch (error) {
+          console.error('Error fetching associated documents:', error);
+        } finally {
+          setIsLoadingDocuments(false);
+        }
+      };
+      
+      fetchAssociatedDocuments();
     }
+  }, [jobId, isFetching, user?.id]); 
 
-    // Check if current status is Rejected (no changes allowed)
-    if (currentJobStatus === 'Rejected') {
-      toast({ 
-        variant: "destructive", 
-        title: "Status Change Not Allowed", 
-        description: "Cannot change status from Rejected. This is a final state." 
-      });
-      return;
-    }
-
-    const existingStatus = displayedStatuses.find(s => s.toLowerCase() === trimmedNewStatus.toLowerCase());
-
-    if (existingStatus) {
-      // Check if the existing status is available based on progression rules
-      const availableStatuses = getAvailableStatuses(currentJobStatus);
-      if (availableStatuses.includes(existingStatus)) {
-        setCurrentJobStatus(existingStatus);
-        toast({ title: "Status Selected", description: `"${existingStatus}" selected.` });
-      } else {
-        toast({ 
-          variant: "destructive", 
-          title: "Status Not Available", 
-          description: `Cannot change to "${existingStatus}" from current status "${currentJobStatus}".` 
-        });
-      }
-    } else {
-      if (displayedStatuses.length >= MAX_STATUSES) {
-        toast({ variant: "destructive", title: "Status Limit Reached", description: `Cannot add more than ${MAX_STATUSES} statuses.` });
-        return;
-      }
-      setDisplayedStatuses(prev => [...prev, trimmedNewStatus]);
-      setCurrentJobStatus(trimmedNewStatus);
-      toast({ title: "Status Added & Selected", description: `New status "${trimmedNewStatus}" added and selected.` });
-    }
-    setNewCustomStatusInput('');
-  };
+  // Removed handleAddCustomStatus as per edit hint
 
 
   const handleSubmit = async (event: FormEvent) => {
@@ -578,7 +576,7 @@ export default function EditJobPage() {
   }
 
   const allInputsDisabled = isLoading || isFetching;
-  const canAddNewStatus = displayedStatuses.length < MAX_STATUSES || displayedStatuses.some(s => s.toLowerCase() === newCustomStatusInput.trim().toLowerCase());
+  // Removed canAddNewStatus as per edit hint
 
 
   const renderSectionContent = () => {
@@ -847,11 +845,14 @@ export default function EditJobPage() {
             <CardHeader><CardTitle className="font-headline text-xl flex items-center"><FileTextIcon className="mr-2 h-5 w-5 text-accent" /> Role Specifics</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               <Label htmlFor="roleDetails">Key Responsibilities / Skills</Label>
-              <RichTextEditor
+              <Textarea
+                  id="roleDetails"
                   value={roleDetails}
-                  onChange={(value) => handleFieldChange('role_details', value, setRoleDetails)}
+                  onChange={(e) => handleFieldChange('role_details', e.target.value, setRoleDetails)}
+                  onBlur={(e) => handleFieldBlur('role_details', e.target.value)}
+                  placeholder="e.g., Develop and maintain web applications, collaborate with cross-functional teams..."
                   disabled={allInputsDisabled}
-                  minHeight="50vh"
+                  className={`min-h-[50vh] ${errors.role_details && touched.role_details ? 'border-destructive' : ''}`}
                   data-testid="role-details-input"
                 />
               <ErrorMessage fieldName="role_details" />
@@ -865,18 +866,19 @@ export default function EditJobPage() {
             <CardContent className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
+           
                 <Select 
                   value={currentJobStatus} 
                   onValueChange={(newStatus) => {
-                    // Check if the new status is allowed based on progression rules
-                    const availableStatuses = getAvailableStatuses(currentJobStatus);
+                    // Check if the new status is allowed based on progression rules from the original database status
+                    const availableStatuses = getAvailableStatuses(originalDatabaseStatus);
                     if (availableStatuses.includes(newStatus)) {
                       setCurrentJobStatus(newStatus);
                     } else {
                       toast({
                         variant: "destructive",
                         title: "Invalid Status Change",
-                        description: `Cannot change from "${currentJobStatus}" to "${newStatus}". This violates the status progression rules.`
+                        description: `Cannot change from "${originalDatabaseStatus}" to "${newStatus}". This violates the status progression rules.`
                       });
                     }
                   }} 
@@ -884,19 +886,13 @@ export default function EditJobPage() {
                 >
                   <SelectTrigger id="status" data-testid="status-select"><SelectValue placeholder="Select status" /></SelectTrigger>
                   <SelectContent data-testid="status-select-content">
-                    {getAvailableStatuses(currentJobStatus).map(s => (
+                    {getAvailableStatuses(originalDatabaseStatus).map(s => (
                       <SelectItem key={s} value={s}>{s}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 {currentJobStatus && (
                   <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground">
-                      {currentJobStatus === 'Rejected' 
-                        ? 'Job has been rejected. No further status changes allowed.'
-                        : `Available statuses based on current status: ${getAvailableStatuses(currentJobStatus).join(', ')}`
-                      }
-                    </p>
                     {/* Status progression indicator */}
                     <div className="flex items-center space-x-2 text-xs">
                       <span className="text-muted-foreground">Progress:</span>
@@ -905,14 +901,14 @@ export default function EditJobPage() {
                           <div className={`w-2 h-2 rounded-full ${
                             statusOption === currentJobStatus 
                               ? 'bg-primary' 
-                              : getAvailableStatuses(currentJobStatus).includes(statusOption)
+                              : getAvailableStatuses(originalDatabaseStatus).includes(statusOption)
                                 ? 'bg-muted'
                                 : 'bg-muted-foreground/30'
                           }`} />
                           {index < 4 && (
                             <div className={`w-4 h-px mx-1 ${
-                              getAvailableStatuses(currentJobStatus).includes(statusOption) && 
-                              getAvailableStatuses(currentJobStatus).includes(['Saved', 'Applied', 'Interviewing', 'Offer', 'Rejected'][index + 1])
+                              getAvailableStatuses(originalDatabaseStatus).includes(statusOption) && 
+                              getAvailableStatuses(originalDatabaseStatus).includes(['Saved', 'Applied', 'Interviewing', 'Offer', 'Rejected'][index + 1])
                                 ? 'bg-muted'
                                 : 'bg-muted-foreground/30'
                             }`} />
@@ -922,32 +918,6 @@ export default function EditJobPage() {
                     </div>
                   </div>
                 )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="newCustomStatusInput">Add or Select Custom Status (Max {MAX_STATUSES})</Label>
-                <div className="flex items-center space-x-2">
-                  <Input
-                    id="newCustomStatusInput"
-                    value={newCustomStatusInput}
-                    onChange={(e) => setNewCustomStatusInput(e.target.value)}
-                    placeholder="Type new status name"
-                    disabled={allInputsDisabled}
-                    className="flex-grow"
-                    data-testid="new-custom-status-input"
-                  />
-                  <Button
-                    type="button"
-                    onClick={handleAddCustomStatus}
-                    disabled={allInputsDisabled || !newCustomStatusInput.trim() || !canAddNewStatus}
-                    variant="outline"
-                    data-testid="add-custom-status-button"
-                  >
-                    Add & Select
-                  </Button>
-                </div>
-                { displayedStatuses.length >= MAX_STATUSES && !displayedStatuses.some(s => s.toLowerCase() === newCustomStatusInput.trim().toLowerCase()) && newCustomStatusInput.trim() &&
-                    <p className="text-xs text-destructive">Status limit reached. Cannot add new unique status.</p>
-                }
               </div>
               <div className="space-y-2">
                 <Label htmlFor="notes">General Notes</Label>
@@ -980,6 +950,116 @@ export default function EditJobPage() {
                 className="min-h-[25vh]"
                 data-testid="referrals-input"
               />
+            </CardContent>
+          </Card>
+        );
+      case sectionKeys.ASSOCIATED_DOCUMENTS:
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-headline text-xl flex items-center">
+                <FileTextIcon className="mr-2 h-5 w-5 text-accent" /> 
+                Associated Documents
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Associated Resumes */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-medium">Associated Resumes</Label>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/resumes/add?jobId=${jobId}`}>
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Add Resume
+                    </Link>
+                  </Button>
+                </div>
+                {isLoadingDocuments ? (
+                  <div className="text-center py-8">
+                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground mt-2">Loading documents...</p>
+                  </div>
+                ) : associatedResumes.length > 0 ? (
+                  <div className="space-y-3">
+                    {associatedResumes.map((resume) => (
+                      <div key={resume.id} className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
+                        <div className="flex items-center space-x-3">
+                          <FileTextIcon className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <div className="font-medium">{resume.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              Last modified: {new Date(resume.updated_at || resume.created_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button variant="outline" size="sm" asChild>
+                            <Link href={`/resumes/edit/${resume.id}`}>
+                              <Edit3 className="mr-1 h-4 w-4" />
+                              Edit
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileTextIcon className="mx-auto h-16 w-16 mb-4 opacity-50" />
+                    <p>No resumes associated with this job</p>
+                    <p className="text-sm mt-1">Create a resume and link it to this job</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Associated Cover Letters */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-medium">Associated Cover Letters</Label>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/cover-letter-generator?jobId=${jobId}`}>
+                      <PlusCircle className="mr-2 h-4 w-4" />
+                      Add Cover Letter
+                    </Link>
+                  </Button>
+                </div>
+                {isLoadingDocuments ? (
+                  <div className="text-center py-8">
+                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground mt-2">Loading documents...</p>
+                  </div>
+                ) : associatedCoverLetters.length > 0 ? (
+                  <div className="space-y-3">
+                    {associatedCoverLetters.map((letter) => (
+                      <div key={letter.id} className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
+                        <div className="flex items-center space-x-3">
+                          <FileTextIcon className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <div className="font-medium">{letter.title}</div>
+                            <div className="text-sm text-muted-foreground">
+                              Last modified: {new Date(letter.updated_at || letter.created_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button variant="outline" size="sm" asChild>
+                            <Link href={`/cover-letters/edit/${letter.id}`}>
+                              <Edit3 className="mr-1 h-4 w-4" />
+                              Edit
+                            </Link>
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileTextIcon className="mx-auto h-16 w-16 mb-4 opacity-50" />
+                    <p>No cover letters associated with this job</p>
+                    <p className="text-sm mt-1">Create a cover letter and link it to this job</p>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         );

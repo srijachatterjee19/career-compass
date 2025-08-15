@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"; // ShadCN Label
 import { cn } from "@/lib/utils";
 import { FileText, Upload, Sparkles, Save, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+// import { optimizeResumeSection, type OptimizeResumeSectionInput } from "@/ai/flows/optimize-resume-section"; 
 
 interface ResumeSection {
   id: string;
@@ -166,9 +167,6 @@ export default function ResumeOptimizerPage() {
           </div>
           
           <div className="mt-2 text-center border-t pt-6">
-             {/* <Button variant="outline" className="mt-2 mr-4" disabled>
-                <Upload className="mr-2 h-4 w-4" /> Upload Full Resume (TODO)
-              </Button> */}
             <Button 
               size="lg" 
               onClick={handleSaveResume}
@@ -179,7 +177,7 @@ export default function ResumeOptimizerPage() {
               ) : (
                 <Save className="mr-2 h-5 w-5" />
               )}
-              Save Resume 
+              Save Resume (Demo)
             </Button>
           </div>
         </CardContent>
