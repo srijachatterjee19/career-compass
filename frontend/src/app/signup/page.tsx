@@ -106,7 +106,7 @@ export default function SignupPage() {
             <Icons.Logo className="h-12 w-12 text-accent" />
           </div>
           <CardTitle className="font-headline text-3xl">Create Account</CardTitle>
-          <CardDescription>Join Career Compass, the AI-powered tool to supercharge your job search.</CardDescription>
+          <CardDescription>Join Career Compass to supercharge your job search.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">

@@ -18,7 +18,7 @@ const initialStats = [
   { title: "Jobs Tracked", value: 0, icon: Briefcase, color: "text-primary" },
   { title: "Resumes Created", value: 0, icon: FileText, color: "text-blue-500" },
   { title: "Cover Letters", value: 0, icon: Mail, color: "text-green-500" },
-  { title: "Applications Sent", value: 0, icon: CheckCircle, color: "text-yellow-500" },
+  { title: "Applications Sent", value: 0, icon: CheckCircle, color: "text-yellow-500" }, // Counts Applied, Offer, Interviewing, Rejected
 ];
 
 // Job status chart configuration
@@ -42,7 +42,7 @@ interface DashboardJobCardProps {
 }
 
 const DashboardJobCard: React.FC<DashboardJobCardProps> = ({ job, dateType }) => {
-  const dateToShow = dateType === 'deadline' ? job.deadline : job.applicationDate;
+  const dateToShow = dateType === 'deadline' ? job.deadline : job.application_date;
   const dateLabel = dateType === 'deadline' ? 'Deadline' : 'Applied';
 
   return (
@@ -148,7 +148,7 @@ export default function DashboardPage() {
       if (stat.title === "Jobs Tracked") return { ...stat, value: jobs.length };
       if (stat.title === "Resumes Created") return { ...stat, value: resumes.length };
       if (stat.title === "Cover Letters") return { ...stat, value: coverLetters.length };
-      if (stat.title === "Applications Sent") return { ...stat, value: jobs.filter(job => job.status === 'Applied').length };
+      if (stat.title === "Applications Sent") return { ...stat, value: jobs.filter(job => ['Applied', 'Offer', 'Interviewing', 'Rejected'].includes(job.status)).length }; // Count jobs where applications have been sent
       return stat;
     });
     setStats(updatedStats);
@@ -162,8 +162,8 @@ export default function DashboardPage() {
 
     const appliedJobs = jobs.filter(job => job.status === 'Applied');
     const recentJobs = appliedJobs
-      .filter(job => job.applicationDate)
-      .sort((a, b) => new Date(b.applicationDate!).getTime() - new Date(a.applicationDate!).getTime())
+      .filter(job => job.application_date)
+      .sort((a, b) => new Date(b.application_date!).getTime() - new Date(a.application_date!).getTime())
       .slice(0, 5);
 
     setUpcomingDeadlineJobs(upcomingJobs);
@@ -173,9 +173,9 @@ export default function DashboardPage() {
     if (jobs.length > 0) {
       // Monthly status data
       const monthlyData = jobs
-        .filter(job => job.applicationDate)
+        .filter(job => job.application_date)
         .reduce((acc, job) => {
-          const month = format(parseISO(job.applicationDate!), 'MMM yyyy');
+          const month = format(parseISO(job.application_date!), 'MMM yyyy');
           let monthEntry = acc.find(entry => entry.month === month);
           
           if (!monthEntry) {

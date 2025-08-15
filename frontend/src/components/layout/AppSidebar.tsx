@@ -11,8 +11,8 @@ import { LayoutDashboard, Briefcase, FileText, Mail, Files, MailCheck } from 'lu
 const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/jobs', label: 'Job Tracker', icon: Briefcase },
-  { href: '/resume-optimizer', label: 'Resume Optimizer', icon: FileText },
-  { href: '/resumes', label: 'My Resumes', icon: Files },
+  // { href: '/resume-optimizer', label: 'Resume Optimizer', icon: FileText },
+  { href: '/resumes', label: 'Resumes', icon: Files },
   { href: '/cover-letter-generator', label: 'Cover Letter Gen', icon: Mail },
   { href: '/my-cover-letters', label: 'Cover Letters', icon: MailCheck },
 ];
