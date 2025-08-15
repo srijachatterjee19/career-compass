@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -9,13 +8,141 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Save, XCircle, ArrowLeft, FileText as FilesIcon, User, Briefcase, GraduationCap, Sparkles, Lightbulb, Award, PlusCircle, Trash2 } from "lucide-react";
+import { Save, XCircle, ArrowLeft, FileText as FilesIcon, FileText, User, Briefcase, GraduationCap, Sparkles, Lightbulb, Award, PlusCircle, Trash2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { useToast } from "@/hooks/use-toast";
-import type { Resume, ExperienceEntry, EducationEntry, TextEntry, ProjectEntry } from "@/types";
+import type { Resume, ExperienceEntry, EducationEntry, TextEntry, ProjectEntry, Job } from "@/types";
 import { cn } from '@/lib/utils';
-import { addMockResume } from '@/lib/mock-data';
+import { useAuth } from '@/hooks/useAuth';
 
 const generateId = () => crypto.randomUUID();
+
+// Validation functions
+const validateField = (fieldName: string, value: any): string => {
+  switch (fieldName) {
+    case 'name':
+      if (!value || value.trim().length === 0) return 'Resume name is required';
+      if (value.trim().length < 3) return 'Resume name must be at least 3 characters';
+      if (value.trim().length > 100) return 'Resume name must be less than 100 characters';
+      return '';
+    
+    case 'summary':
+      if (value && value.trim().length > 500) return 'Summary must be less than 500 characters';
+      return '';
+    
+    case 'jobTitle':
+      if (value && value.trim().length > 100) return 'Job title must be less than 100 characters';
+      return '';
+    
+    case 'companyName':
+      if (value && value.trim().length > 100) return 'Company name must be less than 100 characters';
+      return '';
+    
+    case 'dates':
+      if (value && value.trim().length > 50) return 'Dates must be less than 50 characters';
+      return '';
+    
+    case 'description':
+      if (value && value.trim().length > 5000) return 'Description must be less than 5000 characters';
+      return '';
+    
+    case 'degree':
+      if (value && value.trim().length > 100) return 'Degree must be less than 100 characters';
+      return '';
+    
+    case 'institution':
+      if (value && value.trim().length > 100) return 'Institution must be less than 100 characters';
+      return '';
+    
+    case 'graduationYear':
+      if (value && value.trim().length > 20) return 'Graduation year must be less than 20 characters';
+      return '';
+    
+    case 'details':
+      if (value && value.trim().length > 500) return 'Details must be less than 500 characters';
+      return '';
+    
+    case 'title':
+      if (value && value.trim().length > 100) return 'Title must be less than 100 characters';
+      return '';
+    
+    case 'value':
+      if (value && value.trim().length > 200) return 'Entry must be less than 200 characters';
+      return '';
+    
+    default:
+      return '';
+  }
+};
+
+const validateForm = (formData: ResumeFormState): Record<string, string> => {
+  const newErrors: Record<string, string> = {};
+  
+  // Validate basic fields
+  newErrors.name = validateField('name', formData.name);
+  newErrors.summary = validateField('summary', formData.summary);
+  
+  // Validate experience entries
+  formData.experience.forEach((exp, index) => {
+    if (exp.jobTitle || exp.companyName || exp.dates || exp.description) {
+      if (!exp.jobTitle?.trim()) {
+        newErrors[`exp-${index}-jobTitle`] = 'Job title is required if adding experience';
+      }
+      if (!exp.companyName?.trim()) {
+        newErrors[`exp-${index}-companyName`] = 'Company name is required if adding experience';
+      }
+      if (!exp.dates?.trim()) {
+        newErrors[`exp-${index}-dates`] = 'Dates are required if adding experience';
+      }
+      if (!exp.description?.trim()) {
+        newErrors[`exp-${index}-description`] = 'Description is required if adding experience';
+      }
+    }
+  });
+  
+  // Validate education entries
+  formData.education.forEach((edu, index) => {
+    if (edu.degree || edu.institution || edu.graduationYear || edu.details) {
+      if (!edu.degree?.trim()) {
+        newErrors[`edu-${index}-degree`] = 'Degree is required if adding education';
+      }
+      if (!edu.institution?.trim()) {
+        newErrors[`edu-${index}-institution`] = 'Institution is required if adding education';
+      }
+      if (!edu.graduationYear?.trim()) {
+        newErrors[`edu-${index}-graduationYear`] = 'Graduation year is required if adding education';
+      }
+    }
+  });
+  
+  // Validate project entries
+  formData.projects.forEach((proj, index) => {
+    if (proj.title || proj.description) {
+      if (!proj.title?.trim()) {
+        newErrors[`proj-${index}-title`] = 'Project title is required if adding project';
+      }
+      if (!proj.description?.trim()) {
+        newErrors[`proj-${index}-description`] = 'Project description is required if adding project';
+      }
+    }
+  });
+  
+  // Validate skills and achievements
+  formData.skills.forEach((skill, index) => {
+    if (skill.value && !skill.value.trim()) {
+      newErrors[`skill-${index}-value`] = 'Skill cannot be empty';
+    }
+  });
+  
+  formData.achievements.forEach((achievement, index) => {
+    if (achievement.value && !achievement.value.trim()) {
+      newErrors[`achievement-${index}-value`] = 'Achievement cannot be empty';
+    }
+  });
+  
+  return newErrors;
+};
 
 function Loader2({ className }: { className?: string }) {
   return (
@@ -44,6 +171,7 @@ interface ResumeFormState {
   skills: TextEntry[];
   projects: ProjectEntry[];
   achievements: TextEntry[];
+  job_id?: number;
 }
 
 const initialFormState: ResumeFormState = {
@@ -54,17 +182,43 @@ const initialFormState: ResumeFormState = {
   skills: [{ id: generateId(), value: '' }],
   projects: [{ id: generateId(), title: '', description: '' }],
   achievements: [{ id: generateId(), value: '' }],
+  job_id: undefined,
 };
 
 export default function AddResumePage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const [formData, setFormData] = useState<ResumeFormState>(initialFormState);
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingJobs, setIsLoadingJobs] = useState(false);
+  
+  // Validation state
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+
+  // Helper functions for validation
+  const handleFieldChange = (field: keyof Pick<ResumeFormState, 'name' | 'summary'>, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
+
+  const handleFieldBlur = (field: keyof Pick<ResumeFormState, 'name' | 'summary'>, value: string) => {
+    setTouched(prev => ({ ...prev, [field]: true }));
+    
+    // Validate field on blur
+    const error = validateField(field, value);
+    setErrors(prev => ({ ...prev, [field]: error }));
+  };
 
   const handleInputChange = (field: keyof Pick<ResumeFormState, 'name' | 'summary'>, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    handleFieldChange(field, value);
   };
 
   // Experience handlers
@@ -142,9 +296,77 @@ export default function AddResumePage() {
     }));
   };
 
+  // Error display component
+  const ErrorMessage = ({ fieldName }: { fieldName: string }) => {
+    const error = errors[fieldName];
+    const isTouched = touched[fieldName];
+    
+    if (!error || !isTouched) return null;
+    
+    return (
+      <p className="text-sm text-destructive mt-1">
+        {error}
+      </p>
+    );
+  };
+
+  // Fetch jobs for job selection
+  useEffect(() => {
+    const fetchJobs = async () => {
+      if (!user) return;
+      
+      setIsLoadingJobs(true);
+      try {
+        const response = await fetch(`/api/jobs?userId=${user.id}`);
+        if (response.ok) {
+          const jobsData = await response.json();
+          setJobs(jobsData);
+        }
+      } catch (error) {
+        console.error('Failed to fetch jobs:', error);
+      } finally {
+        setIsLoadingJobs(false);
+      }
+    };
+
+    fetchJobs();
+  }, [user]);
+
+  // Check for jobId query parameter to auto-link resume to a job
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const jobIdParam = urlParams.get('jobId');
+    
+    if (jobIdParam) {
+      const jobId = parseInt(jobIdParam);
+      if (!isNaN(jobId)) {
+        setFormData(prev => ({ ...prev, job_id: jobId }));
+        console.log('Auto-linking resume to job:', jobId);
+      }
+    }
+  }, []);
+
+  const hasErrors = (): boolean => {
+    return Object.values(errors).some(error => error.length > 0);
+  };
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setIsLoading(true);
+
+    // Validate form before submission
+    const formErrors = validateForm(formData);
+    setErrors(formErrors);
+
+    if (Object.values(formErrors).some(error => error.length > 0)) {
+      toast({
+        variant: "destructive",
+        title: "Validation Errors",
+        description: "Please fix the errors in the form before submitting.",
+      });
+      setIsLoading(false);
+      return;
+    }
 
     if (!formData.name.trim()) {
       toast({ variant: "destructive", title: "Missing Information", description: "Resume Name is required." });
@@ -152,7 +374,7 @@ export default function AddResumePage() {
       return;
     }
 
-    const newResumeData: Omit<Resume, 'id' | 'createdAt' | 'updatedAt'> = {
+    const newResumeData = {
       name: formData.name,
       summary: formData.summary,
       experience: formData.experience.filter(exp => exp.jobTitle || exp.companyName || exp.dates || exp.description),
@@ -160,17 +382,53 @@ export default function AddResumePage() {
       skills: formData.skills.filter(skill => skill.value),
       projects: formData.projects.filter(proj => proj.title || proj.description),
       achievements: formData.achievements.filter(ach => ach.value),
+      job_id: formData.job_id,
     };
 
-    try {
-      await addMockResume(newResumeData);
+    if (!user) {
       toast({
-        title: "Resume Created (Demo)",
-        description: `The resume "${formData.name}" has been created.`,
+        variant: "destructive",
+        title: "Authentication Error",
+        description: "Please log in to create resumes.",
       });
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const resumeData = {
+        ...newResumeData,
+        userId: user.id,
+      };
+
+      const response = await fetch('/api/resumes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(resumeData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create resume');
+      }
+
+      const savedResume = await response.json();
+      console.log("Resume created successfully:", savedResume);
+
+      toast({
+        title: "Resume Created Successfully!",
+        description: `The resume "${formData.name}" has been created and saved.`,
+      });
+      
       router.push('/resumes');
     } catch (error) {
-      toast({ variant: "destructive", title: "Creation Failed", description: "Could not create the resume." });
+      console.error('Error creating resume:', error);
+      toast({ 
+        variant: "destructive", 
+        title: "Creation Failed", 
+        description: "Could not create the resume. Please try again." 
+      });
     } finally {
       setIsLoading(false);
     }
@@ -204,6 +462,22 @@ export default function AddResumePage() {
           <CardDescription>Fill in the details to build your new resume.</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
+          {/* Validation Summary */}
+          {Object.values(errors).some(error => error.length > 0) && (
+            <div className="mb-4 p-4 border border-destructive bg-destructive/10 rounded-lg">
+              <h3 className="font-semibold text-destructive mb-2">Please fix the following errors:</h3>
+              <ul className="list-disc list-inside space-y-1 text-sm text-destructive">
+                {Object.entries(errors).map(([field, error]) => 
+                  error && (
+                    <li key={field}>
+                      <span className="capitalize">{field.replace(/[-_]/g, ' ')}:</span> {error}
+                    </li>
+                  )
+                )}
+              </ul>
+            </div>
+          )}
+          
           <CardContent className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="resumeName" className="text-base">Resume Name*</Label>
@@ -211,10 +485,66 @@ export default function AddResumePage() {
                 id="resumeName"
                 value={formData.name}
                 onChange={(e) => handleInputChange('name', e.target.value)}
+                onBlur={(e) => handleFieldBlur('name', e.target.value)}
                 placeholder="e.g., Software Engineer - Job Application"
                 required
                 disabled={isLoading}
+                className={errors.name && touched.name ? 'border-destructive' : ''}
               />
+              <ErrorMessage fieldName="name" />
+            </div>
+
+            {/* Job Association Section */}
+            <div className="space-y-2">
+              <Label htmlFor="jobAssociation" className="text-base flex items-center">
+                <Briefcase className="mr-2 h-5 w-5 text-muted-foreground" />
+                Associate with Job (Optional)
+              </Label>
+              <Select
+                value={formData.job_id?.toString() || "general"}
+                onValueChange={(value) => {
+                  if (value === "general") {
+                    setFormData(prev => ({ ...prev, job_id: undefined }));
+                  } else {
+                    setFormData(prev => ({ ...prev, job_id: parseInt(value) }));
+                  }
+                }}
+                disabled={isLoading || isLoadingJobs}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a job or make it general" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="general">
+                    <div className="flex items-center space-x-2">
+                      <FilesIcon className="h-4 w-4" />
+                      <span>General Resume</span>
+                    </div>
+                  </SelectItem>
+                  {jobs.length > 0 && (
+                    <>
+                      <Separator />
+                      <div className="px-2 py-1.5 text-sm font-medium text-muted-foreground">
+                        Saved Jobs
+                      </div>
+                      {jobs.map((job) => (
+                        <SelectItem key={job.id} value={job.id.toString()}>
+                          <div className="flex items-center space-x-2">
+                            <Briefcase className="h-4 w-4" />
+                            <div className="text-left">
+                              <div className="font-medium">{job.title}</div>
+                              <div className="text-xs text-muted-foreground">{job.company}</div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                Link this resume to a specific job application or keep it as a general resume.
+              </p>
             </div>
 
             {/* Summary Section */}
@@ -227,10 +557,12 @@ export default function AddResumePage() {
                 id="summary"
                 value={formData.summary}
                 onChange={(e) => handleInputChange('summary', e.target.value)}
+                onBlur={(e) => handleFieldBlur('summary', e.target.value)}
                 placeholder="A brief overview of your professional background..."
-                className="min-h-[120px]"
+                className={`min-h-[120px] ${errors.summary && touched.summary ? 'border-destructive' : ''}`}
                 disabled={isLoading}
               />
+              <ErrorMessage fieldName="summary" />
             </div>
 
             {/* Work Experience Section */}
@@ -365,7 +697,7 @@ export default function AddResumePage() {
               <XCircle className="mr-2 h-4 w-4" />
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading || !formData.name} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button type="submit" disabled={isLoading || !formData.name || hasErrors()} className="bg-primary text-primary-foreground hover:bg-primary/90">
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               {isLoading ? 'Saving...' : 'Save Resume'}
             </Button>
