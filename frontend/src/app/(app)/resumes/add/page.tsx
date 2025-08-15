@@ -175,13 +175,37 @@ interface ResumeFormState {
 }
 
 const initialFormState: ResumeFormState = {
-  name: '',
-  summary: '',
-  experience: [{ id: generateId(), jobTitle: '', companyName: '', dates: '', description: '' }],
-  education: [{ id: generateId(), degree: '', institution: '', graduationYear: '', details: '' }],
-  skills: [{ id: generateId(), value: '' }],
-  projects: [{ id: generateId(), title: '', description: '' }],
-  achievements: [{ id: generateId(), value: '' }],
+  name: 'My Professional Resume',
+  summary: 'Experienced professional with a strong background in technology and project management. Passionate about delivering high-quality solutions and driving innovation.',
+  experience: [{ 
+    id: generateId(), 
+    jobTitle: 'Software Developer', 
+    companyName: 'Tech Company Inc.', 
+    dates: '2022 - Present', 
+    description: 'Developed and maintained web applications using modern technologies. Collaborated with cross-functional teams to deliver high-quality software solutions.' 
+  }],
+  education: [{ 
+    id: generateId(), 
+    degree: 'Bachelor of Science in Computer Science', 
+    institution: 'University of Technology', 
+    graduationYear: '2022', 
+    details: 'Graduated with honors. Relevant coursework included Data Structures, Algorithms, and Software Engineering.' 
+  }],
+  skills: [
+    { id: generateId(), value: 'JavaScript' },
+    { id: generateId(), value: 'React' },
+    { id: generateId(), value: 'Node.js' },
+    { id: generateId(), value: 'Python' }
+  ],
+  projects: [{ 
+    id: generateId(), 
+    title: 'E-commerce Platform', 
+    description: 'Built a full-stack e-commerce application with user authentication, product management, and payment integration.' 
+  }],
+  achievements: [
+    { id: generateId(), value: 'Employee of the Month - March 2023' },
+    { id: generateId(), value: 'Led team of 5 developers on major project' }
+  ],
   job_id: undefined,
 };
 
@@ -459,7 +483,20 @@ export default function AddResumePage() {
             <FilesIcon className="mr-3 h-7 w-7 text-accent" />
             Create New Resume
           </CardTitle>
-          <CardDescription>Fill in the details to build your new resume.</CardDescription>
+          <CardDescription>
+            Fill in the details to build your new resume. The form comes with sample content to get you started - feel free to edit or replace it with your own information.
+          </CardDescription>
+          <div className="flex justify-end mt-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setFormData(initialFormState)}
+              className="text-xs"
+            >
+              Reset to Sample Content
+            </Button>
+          </div>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           {/* Validation Summary */}

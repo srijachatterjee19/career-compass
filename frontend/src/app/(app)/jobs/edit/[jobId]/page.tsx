@@ -176,7 +176,7 @@ export default function EditJobPage() {
       
       case 'company':
         if (!value || value.trim().length === 0) return 'Company name is required';
-        if (value.trim().length < 2) return 'Company name must be at least 2 characters';
+        if (value.trim().length < 1) return 'Company name must be at least 1 character';
         if (value.trim().length > 100) return 'Company name must be less than 100 characters';
         return '';
       
@@ -994,7 +994,7 @@ export default function EditJobPage() {
                         </div>
                         <div className="flex space-x-2">
                           <Button variant="outline" size="sm" asChild>
-                            <Link href={`/resumes/edit/${resume.id}`}>
+                            <Link href={`/resumes/edit/${resume.id}`} onClick={() => console.log('Navigating to resume edit:', `/resumes/edit/${resume.id}`)}>
                               <Edit3 className="mr-1 h-4 w-4" />
                               Edit
                             </Link>
@@ -1043,7 +1043,7 @@ export default function EditJobPage() {
                         </div>
                         <div className="flex space-x-2">
                           <Button variant="outline" size="sm" asChild>
-                            <Link href={`/cover-letters/edit/${letter.id}`}>
+                            <Link href={`/cover-letters/edit/${letter.id}`} onClick={() => console.log('Navigating to cover letter edit:', `/cover-letters/edit/${letter.id}`)}>
                               <Edit3 className="mr-1 h-4 w-4" />
                               Edit
                             </Link>

@@ -21,13 +21,14 @@ const initialStats = [
   { title: "Applications Sent", value: 0, icon: CheckCircle, color: "text-yellow-500" }, // Counts Applied, Offer, Interviewing, Rejected
 ];
 
-// Job status chart configuration
+// Job status chart configuration with consistent colors
+// Applied: Blue, Interviewing: Amber/Orange, Offer: Green, Rejected: Red, Saved: Gray
 const jobStatusChartConfig = {
-  Applied: { color: 'hsl(var(--primary))', label: 'Applied' },
-  Interviewing: { color: 'hsl(var(--warning))', label: 'Interviewing' },
-  Offer: { color: 'hsl(var(--success))', label: 'Offer' },
-  Rejected: { color: 'hsl(var(--destructive))', label: 'Rejected' },
-  Saved: { color: 'hsl(var(--muted))', label: 'Saved' },
+  Applied: { color: '#3b82f6', label: 'Applied' }, // Blue
+  Interviewing: { color: '#f59e0b', label: 'Interviewing' }, // Amber/Orange
+  Offer: { color: '#10b981', label: 'Offer' }, // Green
+  Rejected: { color: '#ef4444', label: 'Rejected' }, // Red
+  Saved: { color: '#6b7280', label: 'Saved' }, // Gray
 } satisfies ChartConfig;
 
 const getLogoUrl = (companyName: string) => {
@@ -47,7 +48,7 @@ const DashboardJobCard: React.FC<DashboardJobCardProps> = ({ job, dateType }) =>
 
   return (
     <Link href={`/jobs/edit/${job.id}`} passHref>
-      <Card className="p-3 space-y-1.5 hover:shadow-md transition-shadow cursor-pointer group bg-card/70">
+      <Card className="p-3 space-y-1.5 hover:shadow-md transition-shadow cursor-pointer group bg-card/70 border border-border/50">
         <div className="flex items-start justify-between">
           <div>
             <h4 className="font-semibold text-sm group-hover:text-primary transition-colors">{job.title}</h4>
@@ -65,11 +66,11 @@ const DashboardJobCard: React.FC<DashboardJobCardProps> = ({ job, dateType }) =>
         </div>
         <div className="flex items-center justify-between text-xs">
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-            job.status === 'Applied' ? 'bg-primary/10 text-primary' :
-            job.status === 'Interviewing' ? 'bg-warning/10 text-warning' :
-            job.status === 'Offer' ? 'bg-success/10 text-success' :
-            job.status === 'Rejected' ? 'bg-destructive/10 text-destructive' :
-            'bg-muted text-muted-foreground'
+            job.status === 'Applied' ? 'bg-blue-100 text-blue-700' :
+            job.status === 'Interviewing' ? 'bg-amber-100 text-amber-700' :
+            job.status === 'Offer' ? 'bg-green-100 text-green-700' :
+            job.status === 'Rejected' ? 'bg-red-100 text-red-700' :
+            'bg-gray-100 text-gray-700'
           }`}>
             {job.status}
           </span>
@@ -160,7 +161,8 @@ export default function DashboardPage() {
       .sort((a, b) => new Date(a.deadline!).getTime() - new Date(b.deadline!).getTime())
       .slice(0, 5);
 
-    const appliedJobs = jobs.filter(job => job.status === 'Applied');
+    // Get jobs that are just applied (not progressed to other statuses)
+    const appliedJobs = jobs.filter(job => job.status === 'Applied'); // Only jobs that are just applied
     const recentJobs = appliedJobs
       .filter(job => job.application_date)
       .sort((a, b) => new Date(b.application_date!).getTime() - new Date(a.application_date!).getTime())
@@ -248,9 +250,9 @@ export default function DashboardPage() {
               </Link>
             </Button>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             {!isClient ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <Skeleton className="h-[76px] w-full rounded-lg" />
                 <Skeleton className="h-[76px] w-full rounded-lg" />
               </div>
@@ -275,7 +277,7 @@ export default function DashboardPage() {
         <Card className="shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="font-headline text-xl flex items-center">
-              <Send className="mr-2 h-5 w-5 text-accent" />
+              <Send className="mr-2 h-4 w-4 text-accent" />
               Recently Applied
             </CardTitle>
             <Button variant="outline" size="sm" asChild>
@@ -284,9 +286,9 @@ export default function DashboardPage() {
               </Link>
             </Button>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
              {!isClient ? (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <Skeleton className="h-[76px] w-full rounded-lg" />
                 <Skeleton className="h-[76px] w-full rounded-lg" />
               </div>

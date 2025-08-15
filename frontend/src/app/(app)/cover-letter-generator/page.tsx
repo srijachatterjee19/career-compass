@@ -207,15 +207,6 @@ export default function CreateCoverLetterPage() {
 
             <div className="space-y-2">
               <Label htmlFor="jobSelection" className="text-base">Associated Job (Optional)</Label>
-              {formData.job_id && (
-                <div className="p-3 bg-primary/10 border border-primary/30 rounded-md text-sm text-primary">
-                  <div className="flex items-center space-x-2">
-                    <Briefcase className="h-4 w-4" />
-                    <span className="font-medium">Auto-linked to job #{formData.job_id}</span>
-                  </div>
-                  <p className="text-primary/80 mt-1">This cover letter will be automatically associated with the selected job.</p>
-                </div>
-              )}
               <Select
                 value={formData.job_id?.toString() || "general"}
                 onValueChange={(value) => {
