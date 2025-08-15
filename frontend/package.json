@@ -24,7 +24,9 @@
     "db:clear": "tsx prisma/clear-data.ts",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "vercel-build": "prisma generate && prisma db push && next build",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@genkit-ai/next": "^1.14.1",
