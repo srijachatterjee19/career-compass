@@ -385,7 +385,7 @@ export default function AddResumePage() {
       const savedResume = await response.json();
       console.log("Resume created successfully:", savedResume);
 
-            toast({
+      toast({
         title: "Resume Created Successfully!",
         description: `The resume "${data.name}" has been created and saved.`,
       });
