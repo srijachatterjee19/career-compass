@@ -48,7 +48,6 @@ This creates sample users:
 ### 6. Start Development Servers
 
 ```bash
-cd frontend
 npm run dev
 ```
 

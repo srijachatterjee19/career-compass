@@ -92,22 +92,23 @@ async function main() {
     data: {
       user_id: user1.id,
       job_id: job1.id,
-      title: 'Software Engineer Resume',
-      content: 'Experienced software engineer with 5+ years of experience in full-stack development...',
-      version: 1,
-      is_active: true
-    }
+      name: 'Software Engineer Resume',
+      summary: 'Experienced software engineer with 5+ years in full‑stack dev...',
+      skills: ['TypeScript', 'React', 'Node.js'],          // Json field
+      achievements: ['Reduced build time by 30%'],         // Json field
+      projects: [{ name: 'Project X', role: 'Lead' }],     // Json field
+    },
   });
 
   const resume2 = await prisma.resume.create({
     data: {
-      user_id: user2.id,
-      job_id: job3.id,
-      title: 'Product Manager Resume',
-      content: 'Strategic product manager with strong leadership...',
-      version: 1,
-      is_active: true
-    }
+      user_id: user1.id,
+      job_id: job2.id,
+      name: 'Frontend Engineer Resume',
+      summary: 'Frontend-focused engineer with strong React and UX background...',
+      skills: ['React', 'Next.js', 'Tailwind CSS'],
+      experience: [{ company: 'Startup Inc', title: 'FE Dev' }],
+    },
   });
 
   console.log('📄 Created sample resumes');
