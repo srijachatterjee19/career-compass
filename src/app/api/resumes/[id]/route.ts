@@ -115,7 +115,7 @@ export async function PUT(
     }
 
     // Prepare the data for update
-    const updateData = {
+    const updateData: any = {
       name: data.name,
       summary: data.summary,
       experience: data.experience ? JSON.stringify(data.experience) : null,
@@ -123,9 +123,30 @@ export async function PUT(
       skills: data.skills ? JSON.stringify(data.skills) : null,
       projects: data.projects ? JSON.stringify(data.projects) : null,
       achievements: data.achievements ? JSON.stringify(data.achievements) : null,
-      job_id: data.job_id ?? undefined, // Convert null to undefined for Prisma
       is_active: data.is_active,
     };
+
+    // Handle job_id properly - only include if it's a number
+    if (typeof data.job_id === 'number') {
+      updateData.job_id = data.job_id;
+    } else if (data.job_id === null) {
+      updateData.job_id = null;
+    }
+    // If data.job_id is undefined, don't include it in updateData
+
+    // Debug logging
+    console.log('Resume ID:', resumeId);
+    console.log('Update data:', updateData);
+    console.log('Prisma client:', prisma);
+
+    // Validate that prisma client is available
+    if (!prisma) {
+      console.error('Prisma client is undefined');
+      return NextResponse.json(
+        { error: 'Database connection error' },
+        { status: 500 }
+      );
+    }
 
     const updatedResume = await prisma.resume.update({
       where: { id: resumeId },

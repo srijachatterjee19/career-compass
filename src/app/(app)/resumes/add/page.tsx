@@ -545,7 +545,7 @@ export default function AddResumePage() {
                 }}
                 disabled={isLoading || isLoadingJobs}
               >
-                <SelectTrigger>
+                <SelectTrigger className={cn(errors.job_id && 'border-destructive')}>
                   <SelectValue placeholder="Select a job or make it general" />
                 </SelectTrigger>
                 <SelectContent>
@@ -576,6 +576,12 @@ export default function AddResumePage() {
                   )}
                 </SelectContent>
               </Select>
+              {errors.job_id && (
+                <p className="text-sm text-destructive mt-1 flex items-center">
+                  <AlertCircle className="mr-1 h-3 w-3" />
+                  {errors.job_id.message}
+                </p>
+              )}
               <p className="text-sm text-muted-foreground">
                 Link this resume to a specific job application or keep it as a general resume.
               </p>

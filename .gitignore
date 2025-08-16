@@ -24,6 +24,9 @@ logs/
 .vscode/
 .idea/
 
+# TypeScript
+tsconfig.tsbuildinfo
+
 frontend/.next/
 backend/.next/
 frontend/node_modules/

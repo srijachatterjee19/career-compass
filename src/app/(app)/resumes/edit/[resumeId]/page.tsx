@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Save, XCircle, FileText as FilesIcon, User, Briefcase, GraduationCap, Sparkles, Lightbulb, Award, PlusCircle, Trash2, Eye } from "lucide-react";
+import { Save, XCircle, FileText as FilesIcon, User, Briefcase, GraduationCap, Sparkles, Lightbulb, Award, PlusCircle, Trash2, Eye, AlertCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from "@/hooks/use-toast";
@@ -651,7 +651,7 @@ export default function EditResumePage() {
                 }}
                 disabled={isLoading || isLoadingJobs}
               >
-                <SelectTrigger>
+                <SelectTrigger className={errors.job_id && touched.job_id ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Select a job or make it general" />
                 </SelectTrigger>
                 <SelectContent>
@@ -682,6 +682,12 @@ export default function EditResumePage() {
                   )}
                 </SelectContent>
               </Select>
+              {errors.job_id && touched.job_id && (
+                <p className="text-sm text-destructive mt-1 flex items-center">
+                  <AlertCircle className="mr-1 h-3 w-3" />
+                  {errors.job_id}
+                </p>
+              )}
               <p className="text-sm text-muted-foreground">
                 Link this resume to a specific job application or keep it as a general resume.
               </p>
