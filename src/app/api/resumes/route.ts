@@ -32,7 +32,7 @@ const resumeSchema = z.object({
     id: z.string(),
     value: z.string().max(1000, 'Achievement must be less than 1000 characters')
   })).optional(),
-  job_id: z.number().optional(),
+  job_id: z.number().nullable().optional(),
   is_active: z.boolean().default(true),
 });
 

@@ -32,7 +32,7 @@ const resumeUpdateSchema = z.object({
     id: z.string(),
     value: z.string().max(200, 'Achievement must be less than 200 characters')
   })).optional(),
-  job_id: z.number().optional(),
+  job_id: z.number().nullable().optional(),
   is_active: z.boolean().optional(),
 });
 
@@ -123,7 +123,7 @@ export async function PUT(
       skills: data.skills ? JSON.stringify(data.skills) : null,
       projects: data.projects ? JSON.stringify(data.projects) : null,
       achievements: data.achievements ? JSON.stringify(data.achievements) : null,
-      job_id: data.job_id,
+      job_id: data.job_id ?? undefined, // Convert null to undefined for Prisma
       is_active: data.is_active,
     };
 

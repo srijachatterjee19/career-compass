@@ -968,7 +968,7 @@ export default function EditJobPage() {
                 <div className="flex items-center justify-between">
                   <Label className="text-base font-medium">Associated Resumes</Label>
                   <Button variant="outline" size="sm" asChild>
-                    <Link href={`/resumes/add?jobId=${jobId}`}>
+                    <Link href="/resumes/add">
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Add Resume
                     </Link>

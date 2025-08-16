@@ -45,7 +45,7 @@ interface ResumeFormState {
   skills: TextEntry[];
   projects: ProjectEntry[];
   achievements: TextEntry[];
-  job_id?: number;
+  job_id?: number | null;
 }
 
 const initialFormState: ResumeFormState = {
@@ -56,7 +56,7 @@ const initialFormState: ResumeFormState = {
   skills: [{ id: generateId(), value: '' }],
   projects: [{ id: generateId(), title: '', description: '' }],
   achievements: [{ id: generateId(), value: '' }],
-  job_id: undefined,
+  job_id: null,
 };
 
 // Validation functions
@@ -383,7 +383,7 @@ export default function EditResumePage() {
             achievements: parseJsonField(resumeData.achievements).length > 0 
               ? parseJsonField(resumeData.achievements) 
               : [{ id: generateId(), value: '' }],
-            job_id: resumeData.job_id || undefined,
+            job_id: resumeData.job_id || null,
           });
         } else {
           toast({
@@ -483,6 +483,10 @@ export default function EditResumePage() {
         job_id: formData.job_id,
       };
 
+      // Debug logging
+      console.log('Form data being submitted:', formData);
+      console.log('Updated resume data:', updatedResumeData);
+
       const response = await fetch(`/api/resumes/${resumeId}`, {
         method: 'PUT',
         headers: {
@@ -492,7 +496,9 @@ export default function EditResumePage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to update resume');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('API Error Response:', errorData);
+        throw new Error(errorData.error || 'Failed to update resume');
       }
 
       const savedResume = await response.json();
@@ -638,7 +644,7 @@ export default function EditResumePage() {
                 value={formData.job_id?.toString() || "general"}
                 onValueChange={(value) => {
                   if (value === "general") {
-                    setFormData(prev => ({ ...prev, job_id: undefined }));
+                    setFormData(prev => ({ ...prev, job_id: null }));
                   } else {
                     setFormData(prev => ({ ...prev, job_id: parseInt(value) }));
                   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -8,141 +8,129 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Save, XCircle, ArrowLeft, FileText as FilesIcon, FileText, User, Briefcase, GraduationCap, Sparkles, Lightbulb, Award, PlusCircle, Trash2 } from "lucide-react";
+import { Save, XCircle, ArrowLeft, FileText as FilesIcon, FileText, User, Briefcase, GraduationCap, Sparkles, Lightbulb, Award, PlusCircle, Trash2, AlertCircle } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from "@/hooks/use-toast";
 import type { Resume, ExperienceEntry, EducationEntry, TextEntry, ProjectEntry, Job } from "@/types";
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
+import { useForm, useFieldArray } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 
 const generateId = () => crypto.randomUUID();
 
-// Validation functions
-const validateField = (fieldName: string, value: any): string => {
-  switch (fieldName) {
-    case 'name':
-      if (!value || value.trim().length === 0) return 'Resume name is required';
-      if (value.trim().length < 3) return 'Resume name must be at least 3 characters';
-      if (value.trim().length > 100) return 'Resume name must be less than 100 characters';
-      return '';
-    
-    case 'summary':
-      if (value && value.trim().length > 500) return 'Summary must be less than 500 characters';
-      return '';
-    
-    case 'jobTitle':
-      if (value && value.trim().length > 100) return 'Job title must be less than 100 characters';
-      return '';
-    
-    case 'companyName':
-      if (value && value.trim().length > 100) return 'Company name must be less than 100 characters';
-      return '';
-    
-    case 'dates':
-      if (value && value.trim().length > 50) return 'Dates must be less than 50 characters';
-      return '';
-    
-    case 'description':
-      if (value && value.trim().length > 5000) return 'Description must be less than 5000 characters';
-      return '';
-    
-    case 'degree':
-      if (value && value.trim().length > 100) return 'Degree must be less than 100 characters';
-      return '';
-    
-    case 'institution':
-      if (value && value.trim().length > 100) return 'Institution must be less than 100 characters';
-      return '';
-    
-    case 'graduationYear':
-      if (value && value.trim().length > 20) return 'Graduation year must be less than 20 characters';
-      return '';
-    
-    case 'details':
-      if (value && value.trim().length > 500) return 'Details must be less than 500 characters';
-      return '';
-    
-    case 'title':
-      if (value && value.trim().length > 100) return 'Title must be less than 100 characters';
-      return '';
-    
-    case 'value':
-      if (value && value.trim().length > 200) return 'Entry must be less than 200 characters';
-      return '';
-    
-    default:
-      return '';
-  }
-};
+// Enhanced validation schema using Zod with better field-level validation
+const resumeFormSchema = z.object({
+  name: z.string()
+    .min(1, 'Resume name is required')
+    .min(3, 'Resume name must be at least 3 characters')
+    .max(100, 'Resume name must be less than 100 characters')
+    .refine(val => val.trim().length > 0, 'Resume name cannot be empty'),
+  summary: z.string()
+    .max(500, 'Summary must be less than 500 characters')
+    .optional(),
+  experience: z.array(z.object({
+    id: z.string(),
+    jobTitle: z.string()
+      .max(100, 'Job title must be less than 100 characters')
+      .optional(),
+    companyName: z.string()
+      .max(100, 'Company name must be less than 100 characters')
+      .optional(),
+    dates: z.string()
+      .max(50, 'Dates must be less than 50 characters')
+      .refine(val => !val || !val.toLowerCase().includes('null'), 'Please enter valid dates (e.g., "Jan 2020 - Present")')
+      .refine(val => !val || !val.toLowerCase().includes('undefined'), 'Please enter valid dates (e.g., "Jan 2020 - Present")')
+      .refine(val => !val || !val.toLowerCase().includes('nan'), 'Please enter valid dates (e.g., "Jan 2020 - Present")')
+      .optional(),
+    description: z.string()
+      .max(5000, 'Description must be less than 5000 characters')
+      .optional()
+  })).refine((entries) => {
+    // If any experience entry has partial content, show a warning but don't block submission
+    return entries.every(entry => {
+      const hasContent = entry.jobTitle || entry.companyName || entry.dates || entry.description;
+      if (hasContent) {
+        // Allow partial content - don't require all fields
+        return true;
+      }
+      return true;
+    });
+  }, {
+    message: 'Experience entries can be partially filled',
+    path: ['experience']
+  }),
+  education: z.array(z.object({
+    id: z.string(),
+    degree: z.string()
+      .max(100, 'Degree must be less than 100 characters')
+      .optional(),
+    institution: z.string()
+      .max(100, 'Institution must be less than 100 characters')
+      .optional(),
+    graduationYear: z.string()
+      .max(20, 'Graduation year must be less than 20 characters')
+      .refine(val => !val || !val.toLowerCase().includes('null'), 'Please enter a valid graduation year')
+      .refine(val => !val || !val.toLowerCase().includes('undefined'), 'Please enter a valid graduation year')
+      .refine(val => !val || !val.toLowerCase().includes('nan'), 'Please enter a valid graduation year')
+      .optional(),
+    details: z.string()
+      .max(500, 'Details must be less than 500 characters')
+      .optional()
+  })).refine((entries) => {
+    // If any education entry has partial content, show a warning but don't block submission
+    return entries.every(entry => {
+      const hasContent = entry.degree || entry.institution || entry.graduationYear || entry.details;
+      if (hasContent) {
+        // Allow partial content - don't require all fields
+        return true;
+      }
+      return true;
+      });
+    }, {
+      message: 'Education entries can be partially filled',
+      path: ['education']
+    }),
+  skills: z.array(z.object({
+    id: z.string(),
+    value: z.string()
+      .max(200, 'Skill must be less than 200 characters')
+      .optional()
+  })),
+  projects: z.array(z.object({
+    id: z.string(),
+    title: z.string()
+      .max(100, 'Title must be less than 100 characters')
+      .optional(),
+    description: z.string()
+      .max(5000, 'Description must be less than 5000 characters')
+      .optional()
+  })).refine((entries) => {
+    // If any project entry has partial content, show a warning but don't block submission
+    return entries.every(entry => {
+      const hasContent = entry.title || entry.description;
+      if (hasContent) {
+        // Allow partial content - don't require all fields
+        return true;
+      }
+      return true;
+    });
+  }, {
+    message: 'Project entries can be partially filled',
+    path: ['projects']
+  }),
+  achievements: z.array(z.object({
+    id: z.string(),
+    value: z.string()
+      .max(200, 'Achievement must be less than 200 characters')
+      .optional()
+  })),
+  job_id: z.number().nullable().optional(),
+});
 
-const validateForm = (formData: ResumeFormState): Record<string, string> => {
-  const newErrors: Record<string, string> = {};
-  
-  // Validate basic fields
-  newErrors.name = validateField('name', formData.name);
-  newErrors.summary = validateField('summary', formData.summary);
-  
-  // Validate experience entries
-  formData.experience.forEach((exp, index) => {
-    if (exp.jobTitle || exp.companyName || exp.dates || exp.description) {
-      if (!exp.jobTitle?.trim()) {
-        newErrors[`exp-${index}-jobTitle`] = 'Job title is required if adding experience';
-      }
-      if (!exp.companyName?.trim()) {
-        newErrors[`exp-${index}-companyName`] = 'Company name is required if adding experience';
-      }
-      if (!exp.dates?.trim()) {
-        newErrors[`exp-${index}-dates`] = 'Dates are required if adding experience';
-      }
-      if (!exp.description?.trim()) {
-        newErrors[`exp-${index}-description`] = 'Description is required if adding experience';
-      }
-    }
-  });
-  
-  // Validate education entries
-  formData.education.forEach((edu, index) => {
-    if (edu.degree || edu.institution || edu.graduationYear || edu.details) {
-      if (!edu.degree?.trim()) {
-        newErrors[`edu-${index}-degree`] = 'Degree is required if adding education';
-      }
-      if (!edu.institution?.trim()) {
-        newErrors[`edu-${index}-institution`] = 'Institution is required if adding education';
-      }
-      if (!edu.graduationYear?.trim()) {
-        newErrors[`edu-${index}-graduationYear`] = 'Graduation year is required if adding education';
-      }
-    }
-  });
-  
-  // Validate project entries
-  formData.projects.forEach((proj, index) => {
-    if (proj.title || proj.description) {
-      if (!proj.title?.trim()) {
-        newErrors[`proj-${index}-title`] = 'Project title is required if adding project';
-      }
-      if (!proj.description?.trim()) {
-        newErrors[`proj-${index}-description`] = 'Project description is required if adding project';
-      }
-    }
-  });
-  
-  // Validate skills and achievements
-  formData.skills.forEach((skill, index) => {
-    if (skill.value && !skill.value.trim()) {
-      newErrors[`skill-${index}-value`] = 'Skill cannot be empty';
-    }
-  });
-  
-  formData.achievements.forEach((achievement, index) => {
-    if (achievement.value && !achievement.value.trim()) {
-      newErrors[`achievement-${index}-value`] = 'Achievement cannot be empty';
-    }
-  });
-  
-  return newErrors;
-};
+type ResumeFormData = z.infer<typeof resumeFormSchema>;
 
 function Loader2({ className }: { className?: string }) {
   return (
@@ -163,50 +151,37 @@ function Loader2({ className }: { className?: string }) {
   );
 }
 
-interface ResumeFormState {
-  name: string;
-  summary: string;
-  experience: ExperienceEntry[];
-  education: EducationEntry[];
-  skills: TextEntry[];
-  projects: ProjectEntry[];
-  achievements: TextEntry[];
-  job_id?: number;
-}
 
-const initialFormState: ResumeFormState = {
+
+const initialFormState: ResumeFormData = {
   name: 'My Professional Resume',
-  summary: 'Experienced professional with a strong background in technology and project management. Passionate about delivering high-quality solutions and driving innovation.',
+  summary: '',
   experience: [{ 
     id: generateId(), 
-    jobTitle: 'Software Developer', 
-    companyName: 'Tech Company Inc.', 
-    dates: '2022 - Present', 
-    description: 'Developed and maintained web applications using modern technologies. Collaborated with cross-functional teams to deliver high-quality software solutions.' 
+    jobTitle: '', 
+    companyName: '', 
+    dates: '', 
+    description: '' 
   }],
   education: [{ 
     id: generateId(), 
-    degree: 'Bachelor of Science in Computer Science', 
-    institution: 'University of Technology', 
-    graduationYear: '2022', 
-    details: 'Graduated with honors. Relevant coursework included Data Structures, Algorithms, and Software Engineering.' 
+    degree: '', 
+    institution: '', 
+    graduationYear: '', 
+    details: '' 
   }],
   skills: [
-    { id: generateId(), value: 'JavaScript' },
-    { id: generateId(), value: 'React' },
-    { id: generateId(), value: 'Node.js' },
-    { id: generateId(), value: 'Python' }
+    { id: generateId(), value: '' }
   ],
   projects: [{ 
     id: generateId(), 
-    title: 'E-commerce Platform', 
-    description: 'Built a full-stack e-commerce application with user authentication, product management, and payment integration.' 
+    title: '', 
+    description: '' 
   }],
   achievements: [
-    { id: generateId(), value: 'Employee of the Month - March 2023' },
-    { id: generateId(), value: 'Led team of 5 developers on major project' }
+    { id: generateId(), value: '' }
   ],
-  job_id: undefined,
+  job_id: null,
 };
 
 export default function AddResumePage() {
@@ -214,124 +189,106 @@ export default function AddResumePage() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const [formData, setFormData] = useState<ResumeFormState>(initialFormState);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
   
-  // Validation state
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  // React Hook Form setup with Zod validation
+  const form = useForm<ResumeFormData>({
+    resolver: zodResolver(resumeFormSchema),
+    defaultValues: initialFormState,
+    mode: 'onChange', // Validate on change for immediate feedback
+    reValidateMode: 'onChange', // Re-validate on change
+  });
 
-  // Helper functions for validation
-  const handleFieldChange = (field: keyof Pick<ResumeFormState, 'name' | 'summary'>, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+  // Clear errors when user starts typing
+  const handleFieldChange = (fieldPath: keyof ResumeFormData | `experience.${number}.${keyof ResumeFormData['experience'][0]}` | `education.${number}.${keyof ResumeFormData['education'][0]}` | `skills.${number}.${keyof ResumeFormData['skills'][0]}` | `projects.${number}.${keyof ResumeFormData['projects'][0]}` | `achievements.${number}.${keyof ResumeFormData['achievements'][0]}`) => {
+    const fieldError = form.getFieldState(fieldPath);
+    if (fieldError.error) {
+      form.clearErrors(fieldPath);
     }
   };
 
-  const handleFieldBlur = (field: keyof Pick<ResumeFormState, 'name' | 'summary'>, value: string) => {
-    setTouched(prev => ({ ...prev, [field]: true }));
-    
-    // Validate field on blur
-    const error = validateField(field, value);
-    setErrors(prev => ({ ...prev, [field]: error }));
-  };
+  const { 
+    control, 
+    handleSubmit, 
+    formState: { errors, isValid, isDirty }, 
+    watch, 
+    setValue,
+    trigger 
+  } = form;
 
-  const handleInputChange = (field: keyof Pick<ResumeFormState, 'name' | 'summary'>, value: string) => {
-    handleFieldChange(field, value);
-  };
+  // Field arrays for dynamic sections
+  const { fields: experienceFields, append: appendExperience, remove: removeExperience } = useFieldArray({
+    control,
+    name: 'experience',
+  });
+
+  const { fields: educationFields, append: appendEducation, remove: removeEducation } = useFieldArray({
+    control,
+    name: 'education',
+  });
+
+  const { fields: skillsFields, append: appendSkill, remove: removeSkill } = useFieldArray({
+    control,
+    name: 'skills',
+  });
+
+  const { fields: projectsFields, append: appendProject, remove: removeProject } = useFieldArray({
+    control,
+    name: 'projects',
+  });
+
+  const { fields: achievementsFields, append: appendAchievement, remove: removeAchievement } = useFieldArray({
+    control,
+    name: 'achievements',
+  });
+
+  // Watch form values for real-time validation
+  const watchedValues = watch();
 
   // Experience handlers
-  const handleExperienceChange = (index: number, field: keyof Omit<ExperienceEntry, 'id'>, value: string) => {
-    setFormData(prev => {
-      const newExperience = [...prev.experience];
-      newExperience[index] = { ...newExperience[index], [field]: value };
-      return { ...prev, experience: newExperience };
-    });
-  };
   const handleAddExperience = () => {
-    setFormData(prev => ({
-      ...prev,
-      experience: [...prev.experience, { id: generateId(), jobTitle: '', companyName: '', dates: '', description: '' }]
-    }));
+    appendExperience({ id: generateId(), jobTitle: '', companyName: '', dates: '', description: '' });
   };
-  const handleRemoveExperience = (idToRemove: string) => {
-    setFormData(prev => ({ ...prev, experience: prev.experience.filter(exp => exp.id !== idToRemove) }));
+
+  const handleRemoveExperience = (index: number) => {
+    removeExperience(index);
   };
 
   // Education handlers
-  const handleEducationChange = (index: number, field: keyof Omit<EducationEntry, 'id'>, value: string) => {
-    setFormData(prev => {
-      const newEducation = [...prev.education];
-      newEducation[index] = { ...newEducation[index], [field]: value };
-      return { ...prev, education: newEducation };
-    });
-  };
   const handleAddEducation = () => {
-    setFormData(prev => ({
-      ...prev,
-      education: [...prev.education, { id: generateId(), degree: '', institution: '', graduationYear: '', details: '' }]
-    }));
+    appendEducation({ id: generateId(), degree: '', institution: '', graduationYear: '', details: '' });
   };
-  const handleRemoveEducation = (idToRemove: string) => {
-    setFormData(prev => ({ ...prev, education: prev.education.filter(edu => edu.id !== idToRemove) }));
+
+  const handleRemoveEducation = (index: number) => {
+    removeEducation(index);
   };
 
   // Project handlers
-  const handleProjectChange = (index: number, field: keyof Omit<ProjectEntry, 'id'>, value: string) => {
-    setFormData(prev => {
-      const newProjects = [...prev.projects];
-      newProjects[index] = { ...newProjects[index], [field]: value };
-      return { ...prev, projects: newProjects };
-    });
-  };
   const handleAddProject = () => {
-    setFormData(prev => ({
-      ...prev,
-      projects: [...prev.projects, { id: generateId(), title: '', description: '' }]
-    }));
+    appendProject({ id: generateId(), title: '', description: '' });
   };
-  const handleRemoveProject = (idToRemove: string) => {
-    setFormData(prev => ({ ...prev, projects: prev.projects.filter(proj => proj.id !== idToRemove) }));
+
+  const handleRemoveProject = (index: number) => {
+    removeProject(index);
   };
 
   // TextEntry handlers (Skills, Achievements)
-  const handleTextEntryChange = (section: keyof Pick<ResumeFormState, 'skills' | 'achievements'>, index: number, value: string) => {
-    setFormData(prev => {
-      const newEntries = [...prev[section]];
-      newEntries[index] = { ...newEntries[index], value };
-      return { ...prev, [section]: newEntries };
-    });
-  };
-  const handleAddTextEntry = (section: keyof Pick<ResumeFormState, 'skills' | 'achievements'>) => {
-    setFormData(prev => ({
-      ...prev,
-      [section]: [...prev[section], { id: generateId(), value: '' }]
-    }));
-  };
-  const handleRemoveTextEntry = (section: keyof Pick<ResumeFormState, 'skills' | 'achievements'>, idToRemove: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [section]: prev[section].filter(entry => entry.id !== idToRemove)
-    }));
+  const handleAddSkill = () => {
+    appendSkill({ id: generateId(), value: '' });
   };
 
-  // Error display component
-  const ErrorMessage = ({ fieldName }: { fieldName: string }) => {
-    const error = errors[fieldName];
-    const isTouched = touched[fieldName];
-    
-    if (!error || !isTouched) return null;
-    
-    return (
-      <p className="text-sm text-destructive mt-1">
-        {error}
-      </p>
-    );
+  const handleRemoveSkill = (index: number) => {
+    removeSkill(index);
+  };
+
+  const handleAddAchievement = () => {
+    appendAchievement({ id: generateId(), value: '' });
+  };
+
+  const handleRemoveAchievement = (index: number) => {
+    removeAchievement(index);
   };
 
   // Fetch jobs for job selection
@@ -356,33 +313,12 @@ export default function AddResumePage() {
     fetchJobs();
   }, [user]);
 
-  // Check for jobId query parameter to auto-link resume to a job
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const jobIdParam = urlParams.get('jobId');
-    
-    if (jobIdParam) {
-      const jobId = parseInt(jobIdParam);
-      if (!isNaN(jobId)) {
-        setFormData(prev => ({ ...prev, job_id: jobId }));
-        console.log('Auto-linking resume to job:', jobId);
-      }
-    }
-  }, []);
 
-  const hasErrors = (): boolean => {
-    return Object.values(errors).some(error => error.length > 0);
-  };
-
-  const handleSubmit = async (event: FormEvent) => {
-    event.preventDefault();
-    setIsLoading(true);
-
-    // Validate form before submission
-    const formErrors = validateForm(formData);
-    setErrors(formErrors);
-
-    if (Object.values(formErrors).some(error => error.length > 0)) {
+  // Form submission handler
+  const onSubmit = async (data: ResumeFormData) => {
+    // Trigger validation to show all errors
+    const isValid = await form.trigger();
+    if (!isValid) {
       toast({
         variant: "destructive",
         title: "Validation Errors",
@@ -392,22 +328,7 @@ export default function AddResumePage() {
       return;
     }
 
-    if (!formData.name.trim()) {
-      toast({ variant: "destructive", title: "Missing Information", description: "Resume Name is required." });
-      setIsLoading(false);
-      return;
-    }
-
-    const newResumeData = {
-      name: formData.name,
-      summary: formData.summary,
-      experience: formData.experience.filter(exp => exp.jobTitle || exp.companyName || exp.dates || exp.description),
-      education: formData.education.filter(edu => edu.degree || edu.institution || edu.graduationYear || edu.details),
-      skills: formData.skills.filter(skill => skill.value),
-      projects: formData.projects.filter(proj => proj.title || proj.description),
-      achievements: formData.achievements.filter(ach => ach.value),
-      job_id: formData.job_id,
-    };
+    setIsLoading(true);
 
     if (!user) {
       toast({
@@ -420,8 +341,30 @@ export default function AddResumePage() {
     }
 
     try {
+      // Filter out empty entries before submission
+      const cleanedData = {
+        ...data,
+        experience: data.experience.filter(exp => 
+          exp.jobTitle?.trim() || exp.companyName?.trim() || exp.dates?.trim() || exp.description?.trim()
+        ) || [],
+        education: data.education.filter(edu => 
+          edu.degree?.trim() || edu.institution?.trim() || edu.graduationYear?.trim() || edu.details?.trim()
+        ) || [],
+        skills: data.skills.filter(skill => skill.value?.trim()) || [],
+        projects: data.projects.filter(proj => 
+          proj.title?.trim() || proj.description?.trim()
+        ) || [],
+        achievements: data.achievements.filter(ach => ach.value?.trim()) || [],
+        // Ensure job_id is properly handled
+        job_id: data.job_id || null,
+      };
+
+      // Debug logging
+      console.log('Original form data:', data);
+      console.log('Cleaned data:', cleanedData);
+
       const resumeData = {
-        ...newResumeData,
+        ...cleanedData,
         userId: user.id,
       };
 
@@ -434,15 +377,17 @@ export default function AddResumePage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to create resume');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('API Error Response:', errorData);
+        throw new Error(errorData.error || 'Failed to create resume');
       }
 
       const savedResume = await response.json();
       console.log("Resume created successfully:", savedResume);
 
-      toast({
+            toast({
         title: "Resume Created Successfully!",
-        description: `The resume "${formData.name}" has been created and saved.`,
+        description: `The resume "${data.name}" has been created and saved.`,
       });
       
       router.push('/resumes');
@@ -459,14 +404,35 @@ export default function AddResumePage() {
   };
   
   const textEntrySectionsConfig: Array<{
-      field: keyof Pick<ResumeFormState, 'skills' | 'achievements'>;
+      field: 'skills' | 'achievements';
       label: string;
       icon: React.ElementType;
       placeholder: string;
       addButtonLabel: string;
+      addHandler: () => void;
+      removeHandler: (index: number) => void;
+      fields: any[];
     }> = [
-    { field: 'skills', label: 'Skills', icon: Sparkles, placeholder: 'e.g., JavaScript, React, Project Management', addButtonLabel: 'Add Skill' },
-    { field: 'achievements', label: 'Achievements / Awards', icon: Award, placeholder: 'e.g., Employee of the Month, Dean\'s List', addButtonLabel: 'Add Achievement' },
+    { 
+      field: 'skills', 
+      label: 'Skills', 
+      icon: Sparkles, 
+      placeholder: 'e.g., JavaScript, React, Project Management', 
+      addButtonLabel: 'Add Skill',
+      addHandler: handleAddSkill,
+      removeHandler: handleRemoveSkill,
+      fields: skillsFields
+    },
+    { 
+      field: 'achievements', 
+      label: 'Achievements / Awards', 
+      icon: Award, 
+      placeholder: 'e.g., Employee of the Month, Dean\'s List', 
+      addButtonLabel: 'Add Achievement',
+      addHandler: handleAddAchievement,
+      removeHandler: handleRemoveAchievement,
+      fields: achievementsFields
+    },
   ];
 
   return (
@@ -484,33 +450,54 @@ export default function AddResumePage() {
             Create New Resume
           </CardTitle>
           <CardDescription>
-            Fill in the details to build your new resume. The form comes with sample content to get you started - feel free to edit or replace it with your own information.
+            Fill in the details to build your new resume. All sections are optional - you can create a basic resume with just a name, or add as much detail as you'd like.
           </CardDescription>
           <div className="flex justify-end mt-2">
             <Button
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setFormData(initialFormState)}
+              onClick={() => form.reset(initialFormState)}
               className="text-xs"
             >
-              Reset to Sample Content
+              Reset Form
             </Button>
           </div>
         </CardHeader>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit(onSubmit)}>
           {/* Validation Summary */}
-          {Object.values(errors).some(error => error.length > 0) && (
+          {Object.keys(errors).length > 0 && (
             <div className="mb-4 p-4 border border-destructive bg-destructive/10 rounded-lg">
-              <h3 className="font-semibold text-destructive mb-2">Please fix the following errors:</h3>
+              <h3 className="font-semibold text-destructive mb-2 flex items-center">
+                <AlertCircle className="mr-2 h-4 w-4" />
+                Please fix the following errors:
+              </h3>
               <ul className="list-disc list-inside space-y-1 text-sm text-destructive">
-                {Object.entries(errors).map(([field, error]) => 
-                  error && (
+                {Object.entries(errors).map(([field, error]) => {
+                  if (!error) return null;
+                  
+                  // Handle array field errors (experience, education, etc.)
+                  if (Array.isArray(error)) {
+                    return error.map((item, index) => 
+                      item && Object.entries(item).map(([subField, subError]) => 
+                        subError && (
+                          <li key={`${field}-${index}-${subField}`}>
+                            <span className="capitalize">
+                              {field.replace(/[-_]/g, ' ')} #{index + 1} - {subField.replace(/[-_]/g, ' ')}:
+                            </span> {(subError as any)?.message || String(subError)}
+                          </li>
+                        )
+                      )
+                    );
+                  }
+                  
+                  // Handle simple field errors
+                  return (
                     <li key={field}>
-                      <span className="capitalize">{field.replace(/[-_]/g, ' ')}:</span> {error}
+                      <span className="capitalize">{field.replace(/[-_]/g, ' ')}:</span> {(error as any)?.message || String(error)}
                     </li>
-                  )
-                )}
+                  );
+                })}
               </ul>
             </div>
           )}
@@ -520,15 +507,22 @@ export default function AddResumePage() {
               <Label htmlFor="resumeName" className="text-base">Resume Name*</Label>
               <Input
                 id="resumeName"
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                onBlur={(e) => handleFieldBlur('name', e.target.value)}
+                {...form.register('name')}
+                onChange={(e) => {
+                  form.setValue('name', e.target.value);
+                  handleFieldChange('name');
+                }}
                 placeholder="e.g., Software Engineer - Job Application"
                 required
                 disabled={isLoading}
-                className={errors.name && touched.name ? 'border-destructive' : ''}
+                className={cn(errors.name && 'border-destructive')}
               />
-              <ErrorMessage fieldName="name" />
+              {errors.name && (
+                <p className="text-sm text-destructive mt-1 flex items-center">
+                  <AlertCircle className="mr-1 h-3 w-3" />
+                  {errors.name.message}
+                </p>
+              )}
             </div>
 
             {/* Job Association Section */}
@@ -537,13 +531,16 @@ export default function AddResumePage() {
                 <Briefcase className="mr-2 h-5 w-5 text-muted-foreground" />
                 Associate with Job (Optional)
               </Label>
+              
+
+              
               <Select
-                value={formData.job_id?.toString() || "general"}
+                value={watchedValues.job_id?.toString() || "general"}
                 onValueChange={(value) => {
                   if (value === "general") {
-                    setFormData(prev => ({ ...prev, job_id: undefined }));
+                    setValue('job_id', null);
                   } else {
-                    setFormData(prev => ({ ...prev, job_id: parseInt(value) }));
+                    setValue('job_id', parseInt(value));
                   }
                 }}
                 disabled={isLoading || isLoadingJobs}
@@ -592,41 +589,92 @@ export default function AddResumePage() {
               </Label>
               <Textarea
                 id="summary"
-                value={formData.summary}
-                onChange={(e) => handleInputChange('summary', e.target.value)}
-                onBlur={(e) => handleFieldBlur('summary', e.target.value)}
+                {...form.register('summary')}
                 placeholder="A brief overview of your professional background..."
-                className={`min-h-[120px] ${errors.summary && touched.summary ? 'border-destructive' : ''}`}
+                className={cn('min-h-[120px]', errors.summary && 'border-destructive')}
                 disabled={isLoading}
               />
-              <ErrorMessage fieldName="summary" />
+              {errors.summary && (
+                <p className="text-sm text-destructive mt-1 flex items-center">
+                  <AlertCircle className="mr-1 h-3 w-3" />
+                  {errors.summary.message}
+                </p>
+              )}
             </div>
 
             {/* Work Experience Section */}
             <div className="space-y-4">
               <Label className="text-base flex items-center"><Briefcase className="mr-2 h-5 w-5 text-muted-foreground" />Work Experience</Label>
-              {formData.experience.map((exp, index) => (
-                <Card key={exp.id} className="p-4 space-y-3 bg-card/50 shadow-md">
+              {experienceFields.map((field, index) => (
+                <Card key={field.id} className="p-4 space-y-3 bg-card/50 shadow-md">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label htmlFor={`exp-jobTitle-${exp.id}`}>Job Title</Label>
-                      <Input id={`exp-jobTitle-${exp.id}`} value={exp.jobTitle} onChange={(e) => handleExperienceChange(index, 'jobTitle', e.target.value)} placeholder="e.g., Senior Developer" disabled={isLoading} />
+                      <Label htmlFor={`exp-jobTitle-${field.id}`}>Job Title</Label>
+                      <Input 
+                        id={`exp-jobTitle-${field.id}`} 
+                        {...form.register(`experience.${index}.jobTitle`)}
+                        placeholder="e.g., Senior Developer" 
+                        disabled={isLoading}
+                        className={cn(errors.experience?.[index]?.jobTitle && 'border-destructive')}
+                      />
+                      {errors.experience?.[index]?.jobTitle && (
+                        <p className="text-sm text-destructive mt-1 flex items-center">
+                          <AlertCircle className="mr-1 h-3 w-3" />
+                          {errors.experience[index]?.jobTitle?.message}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor={`exp-companyName-${exp.id}`}>Company Name</Label>
-                      <Input id={`exp-companyName-${exp.id}`} value={exp.companyName} onChange={(e) => handleExperienceChange(index, 'companyName', e.target.value)} placeholder="e.g., Tech Solutions Inc." disabled={isLoading} />
+                      <Label htmlFor={`exp-companyName-${field.id}`}>Company Name</Label>
+                      <Input 
+                        id={`exp-companyName-${field.id}`} 
+                        {...form.register(`experience.${index}.companyName`)}
+                        placeholder="e.g., Tech Solutions Inc." 
+                        disabled={isLoading}
+                        className={cn(errors.experience?.[index]?.companyName && 'border-destructive')}
+                      />
+                      {errors.experience?.[index]?.companyName && (
+                        <p className="text-sm text-destructive mt-1 flex items-center">
+                          <AlertCircle className="mr-1 h-3 w-3" />
+                          {errors.experience[index]?.companyName?.message}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor={`exp-dates-${exp.id}`}>Dates</Label>
-                    <Input id={`exp-dates-${exp.id}`} value={exp.dates} onChange={(e) => handleExperienceChange(index, 'dates', e.target.value)} placeholder="e.g., Jan 2020 - Present" disabled={isLoading} />
+                    <Label htmlFor={`exp-dates-${field.id}`}>Dates</Label>
+                    <Input 
+                      id={`exp-dates-${field.id}`} 
+                      {...form.register(`experience.${index}.dates`)}
+                      placeholder="e.g., Jan 2020 - Present" 
+                      disabled={isLoading}
+                      className={cn(errors.experience?.[index]?.dates && 'border-destructive')}
+                    />
+                    {errors.experience?.[index]?.dates && (
+                      <p className="text-sm text-destructive mt-1 flex items-center">
+                        <AlertCircle className="mr-1 h-3 w-3" />
+                        {errors.experience[index]?.dates?.message}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor={`exp-description-${exp.id}`}>Description</Label>
-                    <Textarea id={`exp-description-${exp.id}`} value={exp.description} onChange={(e) => handleExperienceChange(index, 'description', e.target.value)} placeholder="Key responsibilities and achievements..." className="min-h-[100px]" disabled={isLoading} />
+                    <Label htmlFor={`exp-description-${field.id}`}>Description</Label>
+                    <Textarea 
+                      id={`exp-description-${field.id}`} 
+                      {...form.register(`experience.${index}.description`)}
+                      placeholder="Key responsibilities and achievements..." 
+                      className={cn('min-h-[100px]', errors.experience?.[index]?.description && 'border-destructive')}
+                      disabled={isLoading} 
+                    />
+                    {errors.experience?.[index]?.description && (
+                      <p className="text-sm text-destructive mt-1 flex items-center">
+                        <AlertCircle className="mr-1 h-3 w-3" />
+                        {errors.experience[index]?.description?.message}
+                      </p>
+                    )}
                   </div>
-                  {formData.experience.length > 1 && (
-                    <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveExperience(exp.id)} disabled={isLoading}>
+                  {experienceFields.length > 1 && (
+                    <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveExperience(index)} disabled={isLoading}>
                       <Trash2 className="mr-2 h-4 w-4" /> Remove Experience
                     </Button>
                   )}
@@ -640,26 +688,68 @@ export default function AddResumePage() {
             {/* Education Section */}
             <div className="space-y-4">
                 <Label className="text-base flex items-center"><GraduationCap className="mr-2 h-5 w-5 text-muted-foreground" />Education</Label>
-                {formData.education.map((edu, index) => (
-                    <Card key={edu.id} className="p-4 space-y-3 bg-card/50 shadow-md">
+                {educationFields.map((field, index) => (
+                    <Card key={field.id} className="p-4 space-y-3 bg-card/50 shadow-md">
                         <div className="space-y-2">
-                            <Label htmlFor={`edu-degree-${edu.id}`}>Degree</Label>
-                            <Input id={`edu-degree-${edu.id}`} value={edu.degree} onChange={(e) => handleEducationChange(index, 'degree', e.target.value)} placeholder="e.g., M.S. in Computer Science" disabled={isLoading} />
+                            <Label htmlFor={`edu-degree-${field.id}`}>Degree</Label>
+                            <Input 
+                                id={`edu-degree-${field.id}`} 
+                                {...form.register(`education.${index}.degree`)}
+                                placeholder="e.g., M.S. in Computer Science" 
+                                disabled={isLoading}
+                                className={cn(errors.education?.[index]?.degree && 'border-destructive')}
+                            />
+                            {errors.education?.[index]?.degree && (
+                                <p className="text-sm text-destructive mt-1 flex items-center">
+                                    <AlertCircle className="mr-1 h-3 w-3" />
+                                    {errors.education[index]?.degree?.message}
+                                </p>
+                            )}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor={`edu-institution-${edu.id}`}>Institution</Label>
-                            <Input id={`edu-institution-${edu.id}`} value={edu.institution} onChange={(e) => handleEducationChange(index, 'institution', e.target.value)} placeholder="e.g., State University" disabled={isLoading} />
+                            <Label htmlFor={`edu-institution-${field.id}`}>Institution</Label>
+                            <Input 
+                                id={`edu-institution-${field.id}`} 
+                                {...form.register(`education.${index}.institution`)}
+                                placeholder="e.g., State University" 
+                                disabled={isLoading}
+                                className={cn(errors.education?.[index]?.institution && 'border-destructive')}
+                            />
+                            {errors.education?.[index]?.institution && (
+                                <p className="text-sm text-destructive mt-1 flex items-center">
+                                    <AlertCircle className="mr-1 h-3 w-3" />
+                                    {errors.education[index]?.institution?.message}
+                                </p>
+                            )}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor={`edu-graduationYear-${edu.id}`}>Graduation Year</Label>
-                            <Input id={`edu-graduationYear-${edu.id}`} value={edu.graduationYear} onChange={(e) => handleEducationChange(index, 'graduationYear', e.target.value)} placeholder="e.g., 2018" disabled={isLoading} />
+                            <Label htmlFor={`edu-graduationYear-${field.id}`}>Graduation Year</Label>
+                            <Input 
+                                id={`edu-graduationYear-${field.id}`} 
+                                {...form.register(`education.${index}.graduationYear`)}
+                                placeholder="e.g., 2018" 
+                                disabled={isLoading}
+                                className={cn(errors.education?.[index]?.graduationYear && 'border-destructive')}
+                            />
+                            {errors.education?.[index]?.graduationYear && (
+                                <p className="text-sm text-destructive mt-1 flex items-center">
+                                    <AlertCircle className="mr-1 h-3 w-3" />
+                                    {errors.education[index]?.graduationYear?.message}
+                                </p>
+                            )}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor={`edu-details-${edu.id}`}>Details (Optional)</Label>
-                            <Textarea id={`edu-details-${edu.id}`} value={edu.details || ''} onChange={(e) => handleEducationChange(index, 'details', e.target.value)} placeholder="e.g., Thesis, GPA, Honors..." className="min-h-[80px]" disabled={isLoading} />
+                            <Label htmlFor={`edu-details-${field.id}`}>Details (Optional)</Label>
+                            <Textarea 
+                                id={`edu-details-${field.id}`} 
+                                {...form.register(`education.${index}.details`)}
+                                placeholder="e.g., Thesis, GPA, Honors..." 
+                                className={cn('min-h-[80px]', errors.education?.[index]?.details && 'border-destructive')}
+                                disabled={isLoading} 
+                            />
                         </div>
-                        {formData.education.length > 1 && (
-                            <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveEducation(edu.id)} disabled={isLoading}>
+                        {educationFields.length > 1 && (
+                            <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveEducation(index)} disabled={isLoading}>
                                 <Trash2 className="mr-2 h-4 w-4" /> Remove Education
                             </Button>
                         )}
@@ -673,18 +763,42 @@ export default function AddResumePage() {
             {/* Projects Section */}
             <div className="space-y-4">
               <Label className="text-base flex items-center"><Lightbulb className="mr-2 h-5 w-5 text-muted-foreground" />Projects</Label>
-              {formData.projects.map((proj, index) => (
-                <Card key={proj.id} className="p-4 space-y-3 bg-card/50 shadow-md">
+              {projectsFields.map((field, index) => (
+                <Card key={field.id} className="p-4 space-y-3 bg-card/50 shadow-md">
                   <div className="space-y-1">
-                    <Label htmlFor={`proj-title-${proj.id}`}>Project Title</Label>
-                    <Input id={`proj-title-${proj.id}`} value={proj.title} onChange={(e) => handleProjectChange(index, 'title', e.target.value)} placeholder="e.g., Personal Portfolio Website" disabled={isLoading} />
+                    <Label htmlFor={`proj-title-${field.id}`}>Project Title</Label>
+                    <Input 
+                      id={`proj-title-${field.id}`} 
+                      {...form.register(`projects.${index}.title`)}
+                      placeholder="e.g., Personal Portfolio Website" 
+                      disabled={isLoading}
+                      className={cn(errors.projects?.[index]?.title && 'border-destructive')}
+                    />
+                    {errors.projects?.[index]?.title && (
+                      <p className="text-sm text-destructive mt-1 flex items-center">
+                        <AlertCircle className="mr-1 h-3 w-3" />
+                        {errors.projects[index]?.title?.message}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor={`proj-description-${proj.id}`}>Project Description</Label>
-                    <Textarea id={`proj-description-${proj.id}`} value={proj.description} onChange={(e) => handleProjectChange(index, 'description', e.target.value)} placeholder="Describe the project, your role, and technologies used..." className="min-h-[100px]" disabled={isLoading} />
+                    <Label htmlFor={`proj-description-${field.id}`}>Project Description</Label>
+                    <Textarea 
+                      id={`proj-description-${field.id}`} 
+                      {...form.register(`projects.${index}.description`)}
+                      placeholder="Describe the project, your role, and technologies used..." 
+                      className={cn('min-h-[100px]', errors.projects?.[index]?.description && 'border-destructive')}
+                      disabled={isLoading} 
+                    />
+                    {errors.projects?.[index]?.description && (
+                      <p className="text-sm text-destructive mt-1 flex items-center">
+                        <AlertCircle className="mr-1 h-3 w-3" />
+                        {errors.projects[index]?.description?.message}
+                      </p>
+                    )}
                   </div>
-                  {formData.projects.length > 1 && (
-                    <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveProject(proj.id)} disabled={isLoading}>
+                  {projectsFields.length > 1 && (
+                    <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveProject(index)} disabled={isLoading}>
                       <Trash2 className="mr-2 h-4 w-4" /> Remove Project
                     </Button>
                   )}
@@ -702,27 +816,32 @@ export default function AddResumePage() {
                   <sectionConfig.icon className="mr-2 h-5 w-5 text-muted-foreground" />
                   {sectionConfig.label}
                 </Label>
-                {formData[sectionConfig.field].map((entry, index) => (
-                  <Card key={entry.id} className="p-4 space-y-3 bg-card/50 shadow-md">
+                {sectionConfig.fields.map((field, index) => (
+                  <Card key={field.id} className="p-4 space-y-3 bg-card/50 shadow-md">
                     <div className="space-y-1">
-                      <Label htmlFor={`${sectionConfig.field}-value-${entry.id}`}>{sectionConfig.label} Entry #{index + 1}</Label>
+                      <Label htmlFor={`${sectionConfig.field}-value-${field.id}`}>{sectionConfig.label} Entry #{index + 1}</Label>
                       <Textarea 
-                        id={`${sectionConfig.field}-value-${entry.id}`} 
-                        value={entry.value} 
-                        onChange={(e) => handleTextEntryChange(sectionConfig.field, index, e.target.value)} 
+                        id={`${sectionConfig.field}-value-${field.id}`} 
+                        {...form.register(`${sectionConfig.field}.${index}.value`)}
                         placeholder={sectionConfig.placeholder} 
-                        className="min-h-[80px]"
+                        className={cn('min-h-[80px]', errors[sectionConfig.field]?.[index]?.value && 'border-destructive')}
                         disabled={isLoading} 
                       />
+                      {errors[sectionConfig.field]?.[index]?.value && (
+                        <p className="text-sm text-destructive mt-1 flex items-center">
+                          <AlertCircle className="mr-1 h-3 w-3" />
+                          {errors[sectionConfig.field]?.[index]?.value?.message}
+                        </p>
+                      )}
                     </div>
-                    {formData[sectionConfig.field].length > 1 && (
-                        <Button type="button" variant="destructive" size="sm" onClick={() => handleRemoveTextEntry(sectionConfig.field, entry.id)} disabled={isLoading}>
+                    {sectionConfig.fields.length > 1 && (
+                        <Button type="button" variant="destructive" size="sm" onClick={() => sectionConfig.removeHandler(index)} disabled={isLoading}>
                         <Trash2 className="mr-2 h-4 w-4" /> Remove {sectionConfig.label.slice(0,-1)}
                         </Button>
                     )}
                   </Card>
                 ))}
-                <Button type="button" variant="outline" onClick={() => handleAddTextEntry(sectionConfig.field)} disabled={isLoading} className="bg-secondary text-secondary-foreground hover:bg-secondary/80">
+                <Button type="button" variant="outline" onClick={sectionConfig.addHandler} disabled={isLoading} className="bg-secondary text-secondary-foreground hover:bg-secondary/80">
                   <PlusCircle className="mr-2 h-4 w-4" /> {sectionConfig.addButtonLabel}
                 </Button>
               </div>
@@ -734,7 +853,7 @@ export default function AddResumePage() {
               <XCircle className="mr-2 h-4 w-4" />
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading || !formData.name || hasErrors()} className="bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button type="submit" disabled={isLoading || !isValid || !isDirty} className="bg-primary text-primary-foreground hover:bg-primary/90">
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               {isLoading ? 'Saving...' : 'Save Resume'}
             </Button>
