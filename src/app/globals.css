@@ -15,24 +15,24 @@ body {
     --card-foreground: 210 10% 23%; /* Dark Slate Gray text on cards */
     --popover: 0 0% 100%; /* White popovers */
     --popover-foreground: 210 10% 23%;
-    --primary: 221 83% 53%; /* Deep Blue */
-    --primary-foreground: 0 0% 100%; /* White text on Deep Blue */
+    --primary: 169 42% 53%; /* Teal */
+    --primary-foreground: 0 0% 100%; /* White text on Teal */
     --secondary: 0 0% 96%; /* Light Gray for secondary elements */
     --secondary-foreground: 210 10% 23%; /* Dark Slate Gray text on secondary */
     --muted: 0 0% 92%; /* Slightly darker Light Gray for muted backgrounds */
     --muted-foreground: 210 10% 45%; /* Softer gray for muted text */
-    --accent: 221 83% 53%; /* Deep Blue */
-    --accent-foreground: 0 0% 100%; /* White text on Deep Blue */
+    --accent: 169 42% 53%; /* Teal */
+    --accent-foreground: 0 0% 100%; /* White text on Teal */
     --destructive: 0 84% 60%; /* Standard destructive red */
     --destructive-foreground: 0 0% 100%;
     --border: 214 32% 91%; /* Neutral light gray border */
     --input: 0 0% 100%; /* White input background, with border for definition */
-    --ring: 221 83% 58%; /* Slightly lighter Deep Blue for focus ring */
+    --ring: 169 42% 58%; /* Slightly lighter Teal for focus ring */
     
-    --chart-1: 221 83% 60%; /* Deep Blue shade */
-    --chart-2: 221 83% 70%; /* Deep Blue shade */
-    --chart-3: 169 42% 53%; /* Teal shade (complementary or secondary option) */
-    --chart-4: 169 42% 63%; /* Teal shade */
+    --chart-1: 169 42% 53%; /* Teal shade */
+    --chart-2: 169 42% 63%; /* Teal shade */
+    --chart-3: 169 42% 73%; /* Lighter Teal shade */
+    --chart-4: 169 42% 83%; /* Even lighter Teal shade */
     --chart-5: 210 10% 60%; /* Neutral Gray */
     
     --radius: 0.5rem;
@@ -40,12 +40,12 @@ body {
     /* Sidebar Light Theme Variables */
     --sidebar-background: 0 0% 97%; /* Very light gray */
     --sidebar-foreground: 210 10% 23%;
-    --sidebar-primary: 221 83% 53%; /* Deep Blue */
+    --sidebar-primary: 169 42% 53%; /* Teal */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 221 83% 53%; /* Deep Blue */
+    --sidebar-accent: 169 42% 53%; /* Teal */
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 214 32% 91%; /* Neutral light gray */
-    --sidebar-ring: 221 83% 58%; /* Deep Blue focus ring */
+    --sidebar-ring: 169 42% 58%; /* Teal focus ring */
   }
 
   /* Dark Theme */
@@ -56,35 +56,35 @@ body {
     --card-foreground: 210 20% 98%;
     --popover: 220 40% 9%;
     --popover-foreground: 210 20% 98%;
-    --primary: 221 83% 60%; /* Vibrant Blue for dark mode */
-    --primary-foreground: 0 0% 100%; /* White text on Blue */
+    --primary: 169 42% 60%; /* Vibrant Teal for dark mode */
+    --primary-foreground: 0 0% 100%; /* White text on Teal */
     --secondary: 215 25% 27%; /* Darker gray-blue for secondary elements */
     --secondary-foreground: 210 20% 90%;
     --muted: 215 25% 20%; /* Darker muted background */
     --muted-foreground: 210 20% 65%; /* Lighter gray for muted text */
-    --accent: 221 83% 60%; /* Vibrant Blue for dark mode */
-    --accent-foreground: 0 0% 100%; /* White text on Blue */
+    --accent: 169 42% 60%; /* Vibrant Teal for dark mode */
+    --accent-foreground: 0 0% 100%; /* White text on Teal */
     --destructive: 0 70% 50%; /* Red */
     --destructive-foreground: 0 0% 100%;
     --border: 215 20% 25%; /* Dark blue-gray border */
     --input: 215 25% 18%; /* Dark input background */
-    --ring: 221 83% 65%; /* Slightly brighter blue for focus ring */
+    --ring: 169 42% 65%; /* Slightly brighter teal for focus ring */
 
-    --chart-1: 221 83% 60%; /* Blue for charts */
-    --chart-2: 221 83% 70%; /* Lighter Blue for charts */
-    --chart-3: 39 90% 60%; /* Existing Orange for contrast */
-    --chart-4: 39 90% 50%; /* Existing Orange for contrast */
-    --chart-5: 210 15% 50%; /* Existing Gray for contrast */
+    --chart-1: 169 42% 60%; /* Teal for charts */
+    --chart-2: 169 42% 70%; /* Lighter Teal for charts */
+    --chart-3: 169 42% 80%; /* Even lighter Teal for charts */
+    --chart-4: 39 90% 50%; /* Orange for contrast */
+    --chart-5: 210 15% 50%; /* Gray for contrast */
     
     /* Sidebar Dark Theme Variables */
     --sidebar-background: 224 71% 6%; /* Slightly lighter than main dark bg */
     --sidebar-foreground: 210 20% 98%;
-    --sidebar-primary: 221 83% 60%; /* Vibrant Blue */
+    --sidebar-primary: 169 42% 60%; /* Vibrant Teal */
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 221 83% 60%; /* Vibrant Blue */
+    --sidebar-accent: 169 42% 60%; /* Vibrant Teal */
     --sidebar-accent-foreground: 0 0% 100%;
     --sidebar-border: 215 20% 20%;
-    --sidebar-ring: 221 83% 65%; /* Vibrant Blue focus ring */
+    --sidebar-ring: 169 42% 65%; /* Vibrant Teal focus ring */
   }
 }
 

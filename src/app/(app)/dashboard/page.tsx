@@ -15,20 +15,20 @@ import { format, parseISO } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
 
 const initialStats = [
-  { title: "Jobs Tracked", value: 0, icon: Briefcase, color: "text-primary" },
-  { title: "Resumes Created", value: 0, icon: FileText, color: "text-blue-500" },
-  { title: "Cover Letters", value: 0, icon: Mail, color: "text-green-500" },
-  { title: "Applications Sent", value: 0, icon: CheckCircle, color: "text-yellow-500" }, // Counts Applied, Offer, Interviewing, Rejected
+  { title: "Jobs Tracked", value: 0, icon: Briefcase, color: "text-foreground" },
+  { title: "Resumes Created", value: 0, icon: FileText, color: "text-foreground" },
+  { title: "Cover Letters", value: 0, icon: Mail, color: "text-foreground" },
+  { title: "Applications Sent", value: 0, icon: CheckCircle, color: "text-foreground" }, // Counts Applied, Offer, Interviewing, Rejected
 ];
 
-// Job status chart configuration with consistent colors
-// Applied: Blue, Interviewing: Amber/Orange, Offer: Green, Rejected: Red, Saved: Gray
+// Job status chart configuration with beautiful pastel colors
+// Applied: Pastel Teal, Interviewing: Pastel Peach, Offer: Pastel Mint, Rejected: Pastel Rose, Saved: Pastel Lavender
 const jobStatusChartConfig = {
-  Applied: { color: '#3b82f6', label: 'Applied' }, // Blue
-  Interviewing: { color: '#f59e0b', label: 'Interviewing' }, // Amber/Orange
-  Offer: { color: '#10b981', label: 'Offer' }, // Green
-  Rejected: { color: '#ef4444', label: 'Rejected' }, // Red
-  Saved: { color: '#6b7280', label: 'Saved' }, // Gray
+  Applied: { color: '#99f6e4', label: 'Applied' }, // Pastel Teal
+  Interviewing: { color: '#fed7aa', label: 'Interviewing' }, // Pastel Peach
+  Offer: { color: '#a7f3d0', label: 'Offer' }, // Pastel Mint
+  Rejected: { color: '#fecaca', label: 'Rejected' }, // Pastel Rose
+  Saved: { color: '#ddd6fe', label: 'Saved' }, // Pastel Lavender
 } satisfies ChartConfig;
 
 const getLogoUrl = (companyName: string) => {
@@ -66,11 +66,11 @@ const DashboardJobCard: React.FC<DashboardJobCardProps> = ({ job, dateType }) =>
         </div>
         <div className="flex items-center justify-between text-xs">
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-            job.status === 'Applied' ? 'bg-blue-100 text-blue-700' :
-            job.status === 'Interviewing' ? 'bg-amber-100 text-amber-700' :
-            job.status === 'Offer' ? 'bg-green-100 text-green-700' :
-            job.status === 'Rejected' ? 'bg-red-100 text-red-700' :
-            'bg-gray-100 text-gray-700'
+            job.status === 'Applied' ? 'bg-teal-100 text-teal-800' :
+            job.status === 'Interviewing' ? 'bg-orange-100 text-orange-800' :
+            job.status === 'Offer' ? 'bg-emerald-100 text-emerald-800' :
+            job.status === 'Rejected' ? 'bg-rose-100 text-rose-800' :
+            'bg-purple-100 text-purple-800'
           }`}>
             {job.status}
           </span>
@@ -342,6 +342,8 @@ export default function DashboardPage() {
                           stackId="a"
                           fill={jobStatusChartConfig[statusKey as JobStatus]?.color || 'hsl(var(--muted))'}
                           radius={[4, 4, 0, 0]}
+                          stroke="hsl(var(--border))"
+                          strokeWidth={1}
                        />
                     ))}
                   </BarChart>
@@ -401,7 +403,12 @@ export default function DashboardPage() {
                         }}
                       >
                         {jobStatusDistributionData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} stroke={entry.fill} />
+                          <Cell 
+                            key={`cell-${index}`} 
+                            fill={entry.fill} 
+                            stroke="hsl(var(--border))" 
+                            strokeWidth={2}
+                          />
                         ))}
                       </Pie>
                       <ChartLegend content={<ChartLegendContent nameKey="name" />} />

@@ -45,6 +45,16 @@ model Job {
   user                User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
   resumes             Resume[]
 
+  // Database indexes for better search performance
+  @@index([user_id, status])
+  @@index([user_id, company])
+  @@index([user_id, title])
+  @@index([user_id, location])
+  @@index([user_id, application_date])
+  @@index([user_id, deadline])
+  @@index([user_id, salary_min, salary_max])
+  @@index([user_id, created_at])
+  
   @@map("jobs")
 }
 
