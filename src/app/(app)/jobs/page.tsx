@@ -12,6 +12,7 @@ import { PlusCircle, Briefcase, Eye, ExternalLink, Building, Loader2 } from "luc
 import type { Job, JobStatus } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from '@/hooks/useAuth';
+import { getCompanyLogoUrl } from '@/lib/company-logos';
 
 const jobStatusesForFilter: Array<JobStatus | "All Statuses"> = ['All Statuses', 'Saved', 'Applied', 'Interviewing', 'Offer', 'Rejected'];
 
@@ -96,12 +97,6 @@ export default function JobTrackerPage() {
   };
 
   const filteredAndSortedJobs = sortJobs(filteredJobs, sortBy);
-
-  const getLogoUrl = (companyName: string) => {
-    if (!companyName || companyName.trim() === "") return null;
-    const potentialDomain = companyName.trim().toLowerCase().replace(/[^a-z0-9-.]/gi, '').split(' ')[0] + ".com";
-    return `https://logo.clearbit.com/${potentialDomain}`;
-  }
 
   return (
     <div className="space-y-8">
@@ -228,7 +223,7 @@ export default function JobTrackerPage() {
                 </div>
                 <Avatar className="h-[50px] w-[50px] border flex-shrink-0">
                   <AvatarImage
-                    src={getLogoUrl(job.company) || ''}
+                    src={getCompanyLogoUrl(job.company) || ''}
                     alt={job.company ? `${job.company} logo` : 'Company logo'}
                   />
                   <AvatarFallback>

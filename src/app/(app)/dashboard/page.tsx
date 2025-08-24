@@ -13,6 +13,7 @@ import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLe
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, parseISO } from 'date-fns';
 import { useAuth } from '@/hooks/useAuth';
+import { getCompanyLogoUrl } from '@/lib/company-logos';
 
 const initialStats = [
   { title: "Jobs Tracked", value: 0, icon: Briefcase, color: "text-foreground" },
@@ -31,11 +32,7 @@ const jobStatusChartConfig = {
   Saved: { color: '#ddd6fe', label: 'Saved' }, // Pastel Lavender
 } satisfies ChartConfig;
 
-const getLogoUrl = (companyName: string) => {
-  if (!companyName || companyName.trim() === "") return null;
-  const potentialDomain = companyName.trim().toLowerCase().replace(/[^a-z0-9-.]/gi, '').split(' ')[0] + ".com";
-  return `https://logo.clearbit.com/${potentialDomain}`;
-};
+
 
 interface DashboardJobCardProps {
   job: Job;
@@ -56,7 +53,7 @@ const DashboardJobCard: React.FC<DashboardJobCardProps> = ({ job, dateType }) =>
           </div>
           <Avatar className="h-9 w-9 border flex-shrink-0">
             <AvatarImage
-              src={getLogoUrl(job.company) || undefined}
+              src={getCompanyLogoUrl(job.company) || undefined}
               alt={job.company}
             />
             <AvatarFallback className="text-xs bg-muted">

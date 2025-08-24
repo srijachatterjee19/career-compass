@@ -19,6 +19,7 @@ import { useAuth } from '@/hooks/useAuth';
 import type { Job } from "@/types";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import { getCompanyLogoUrl } from '@/lib/company-logos';
 
 const baseJobStatuses: string[] = ['Saved', 'Applied', 'Interviewing', 'Offer', 'Rejected'];
 
@@ -391,8 +392,7 @@ export default function EditJobPage() {
   // Effect for fetching company logo
   useEffect(() => {
     if (company && company.trim() !== "") {
-      const potentialDomain = company.trim().toLowerCase().replace(/[^a-z0-9-.]/gi, '').split(' ')[0] + ".com";
-      setCompanyLogo(`https://logo.clearbit.com/${potentialDomain}`);
+      setCompanyLogo(getCompanyLogoUrl(company.trim()));
     } else {
       setCompanyLogo(null);
     }
